@@ -458,7 +458,7 @@ context = {
     "tiempo_entre_trenes": headway,
     "condicion_señales": condicion,
     "operacion": operacion_val,
-    "zona": zona,
+    "zona": datos_ap["zona"],
 
     # Cronología
     "hora_vicos_disparo": h_disp,
