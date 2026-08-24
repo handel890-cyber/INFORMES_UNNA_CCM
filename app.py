@@ -456,37 +456,39 @@ with col_form:
         per_sub_val = st.text_input("Personal Subestaciones:", value="Carlos Morales")
         per_cat_val = st.text_input("Personal Catenarias:", value="Luis Vargas")
 context = {
-    # 1, 3, 7, 16, 20 (Autocompletados Aperturado)
+    # Aperturado
     "interruptor_aperturado": datos_ap["interruptor"],
     "alimentador_ser_aperturado": datos_ap["alimentador_ser"],
     "ser_aperturado": datos_ap["ser"],
     "alimentador_aperturado": datos_ap["alimentador"],
     "alimentador_aperturado_num": datos_ap["interruptor_num"],
 
-    # 2, 6, 8, 18, 21 (Autocompletados Vecino)
+    # Vecino
     "interruptor_vecino": datos_vec["interruptor"],
     "alimentador_ser_vecino": datos_vec["alimentador_ser"],
     "ser_vecino": datos_vec["ser"],
     "alimentador_vecino": datos_vec["alimentador"],
     "alimentador_vecino_num": datos_vec["interruptor_num"],
 
-    # Funciones y protecciones
+    # Protecciones y ST
     "funcion_disparo_inicial": f_disp_ini,
     "funcion_disparo_final": f_disp_fin,
+    "funcion_disparo_vecina_inicial": f_disp_vec_ini,
+    "funcion_disparo_vecina_final": f_disp_vec_fin,
     "st_aperturado": st_ap,
     "st_vecino": st_vec,
     "st_zona": st_zn,
     "corriente": corriente_val,
 
-    # Datos operativos
+    # Operación
     "fecha": fecha_val,
     "dia": dia_val,
     "tiempo_entre_trenes": headway,
-    "condicion_señales": condicion,
+    "condicion_senales": condicion,
     "operacion": operacion_val,
     "zona": datos_ap["zona"],
 
-    # Cronología
+    # Tiempos
     "hora_vicos_disparo": h_disp,
     "hora_vicos_vecino": h_vec,
     "hora_vicos_dcierre": h_dcierre,
@@ -502,7 +504,6 @@ context = {
     "per_sub": per_sub_val,
     "per_cat": per_cat_val
 }
-
 import streamlit.components.v1 as components
 import base64
 
