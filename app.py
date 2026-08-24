@@ -506,60 +506,57 @@ context = {
 }
 import streamlit.components.v1 as components
 import base64
-
 with col_preview:
     st.header("📄 Vista Previa Real del Documento")
 
-    # Si hay plantilla cargada o local, generamos el docx en memoria
-    if plantilla_word is not None:
-        doc = DocxTemplate(plantilla_word)
-        doc.render(context)
-        
-        buffer = io.BytesIO()
-        doc.save(buffer)
-        buffer.seek(0)
-        docx_bytes = buffer.getvalue()
-        
-        # Codificamos a Base64 para pasarlo al visor JS
-        docx_b64 = base64.b64encode(docx_bytes).decode("utf-8")
+    if plantilla_doc is not None:
+        try:
+            doc = DocxTemplate(plantilla_doc)
+            doc.render(context)
+            
+            buffer = io.BytesIO()
+            doc.save(buffer)
+            buffer.seek(0)
+            docx_bytes = buffer.getvalue()
+            docx_b64 = base64.b64encode(docx_bytes).decode("utf-8")
 
-        # Componente visualizador docx-preview
-        viewer_html = f"""
-        <div id="document-container" style="background-color: #525659; padding: 20px; height: 750px; overflow-y: auto; border-radius: 6px;"></div>
-        
-        <!-- Librería JSZip y docx-preview desde CDN -->
-        <script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.min.js"></script>
-        
-        <script>
-            var base64Data = "{docx_b64}";
-            var byteCharacters = atob(base64Data);
-            var byteNumbers = new Array(byteCharacters.length);
-            for (var i = 0; i < byteCharacters.length; i++) {{
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }}
-            var byteArray = new Uint8Array(byteNumbers);
-            var blob = new Blob([byteArray], {{type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}});
+            viewer_html = f"""
+            <div id="document-container" style="background-color: #525659; padding: 15px; height: 740px; overflow-y: auto; border-radius: 6px;"></div>
+            
+            <script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.min.js"></script>
+            
+            <script>
+                var base64Data = "{docx_b64}";
+                var byteCharacters = atob(base64Data);
+                var byteNumbers = new Array(byteCharacters.length);
+                for (var i = 0; i < byteCharacters.length; i++) {{
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }}
+                var byteArray = new Uint8Array(byteNumbers);
+                var blob = new Blob([byteArray], {{type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}});
 
-            var container = document.getElementById("document-container");
-            docx.renderAsync(blob, container)
-                .then(function() {{
-                    console.log("Word renderizado con éxito");
-                }})
-                .catch(function(err) {{
-                    console.error("Error al renderizar docx:", err);
-                }});
-        </script>
-        """
-        
-        components.html(viewer_html, height=780, scrolling=False)
+                var container = document.getElementById("document-container");
+                container.innerHTML = "";
+                docx.renderAsync(blob, container)
+                    .then(function() {{
+                        console.log("Documento renderizado con éxito");
+                    }})
+                    .catch(function(err) {{
+                        console.error("Error al renderizar docx:", err);
+                    }});
+            </script>
+            """
+            components.html(viewer_html, height=760, scrolling=False)
 
-        st.download_button(
-            label="📥 Descargar Informe Completo (.docx)",
-            data=buffer,
-            file_name=f"Informe_Disparo_{context['ser_aperturado']}_{context['fecha'].replace('/', '-')}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            use_container_width=True
-        )
+            st.download_button(
+                label="📥 Descargar Informe Completo (.docx)",
+                data=buffer,
+                file_name=f"Informe_Disparo_{context['ser_aperturado']}_{context['fecha'].replace('/', '-')}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                use_container_width=True
+            )
+        except Exception as e:
+            st.error(f"Error al compilar la plantilla Word: {e}")
     else:
-        st.info("💡 Carga o selecciona tu plantilla `.docx` para ver la previsualización interactiva.")
+        st.warning("Coloca un archivo `plantilla_base.docx` en el repositorio o súbelo en el formulario para visualizarlo.")
