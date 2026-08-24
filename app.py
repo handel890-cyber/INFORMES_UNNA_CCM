@@ -1,6 +1,9 @@
 import streamlit as st
 from docxtpl import DocxTemplate
+import streamlit.components.v1 as components
 import io
+import base64
+import os
 from datetime import datetime
 
 st.set_page_config(layout="wide", page_title="Generador de Informe SCADA - CCM")
@@ -377,21 +380,46 @@ col_form, col_preview = st.columns([1, 1], gap="medium")
 
 with col_form:
     st.header("📝 Parámetros del Evento")
+
+    # Selección o carga de plantilla
+    plantilla_path = "plantilla_base.docx"
+    plantilla_doc = None
     
-    plantilla_word = st.file_uploader("Cargar plantilla base (.docx)", type=["docx"])
-    
-    with st.expander("1. Selección de Equipos (Autocompletado)", expanded=True):
-        sel_aperturado = st.selectbox("Subestación / Celda Aperturada:", list(CATALOGO_ALIMENTADORES.keys()), index=0)
-        sel_vecino = st.selectbox("Subestación / Celda Vecina:", list(CATALOGO_ALIMENTADORES.keys()), index=1)
-        
+    if os.path.exists(plantilla_path):
+        plantilla_doc = plantilla_path
+    else:
+        plantilla_subida = st.file_uploader("Cargar plantilla base (.docx)", type=["docx"])
+        if plantilla_subida is not None:
+            plantilla_doc = plantilla_subida
+
+    with st.expander("1. Selección de Equipos (Filtro por Zona)", expanded=True):
+        # 1. Seleccionar Alimentador Aperturado
+        opciones_aperturado = list(CATALOGO_ALIMENTADORES.keys())
+        sel_aperturado = st.selectbox("Subestación / Celda Aperturada:", opciones_aperturado, index=2) # Default SER03_PIN AL1
         datos_ap = CATALOGO_ALIMENTADORES[sel_aperturado]
+        zona_detectada = datos_ap["zona"]
+
+        # 2. Filtrar Vecinos que comparten exactamente la misma zona
+        opciones_vecino_filtradas = [
+            k for k, v in CATALOGO_ALIMENTADORES.items() 
+            if v["zona"] == zona_detectada and k != sel_aperturado
+        ]
+
+        if not opciones_vecino_filtradas:
+            opciones_vecino_filtradas = [k for k in CATALOGO_ALIMENTADORES.keys() if k != sel_aperturado]
+            st.warning(f"No se encontraron alimentadores vecinos con la zona exacta '{zona_detectada}'.")
+
+        sel_vecino = st.selectbox("Subestación / Celda Vecina (Colateral filtrado):", opciones_vecino_filtradas, index=0)
         datos_vec = CATALOGO_ALIMENTADORES[sel_vecino]
 
+        st.caption(f"📍 **Zona Eléctrica Compartida:** `{zona_detectada}`")
+
     with st.expander("2. Funciones de Protección y ST"):
-        f_disp_ini = st.text_input("Función VICOS de apertura:", value="Disparo instantáneo Disparador di/dt")
-        f_disp_fin = st.text_input("Función rele Sitras PRO:", value="Disparo Imax")
+        f_disp_ini = st.text_input("Función SCADA Aperturado:", value="Disparo instantáneo Disparador di/dt")
+        f_disp_fin = st.text_input("Función Relé Aperturado:", value="Disparo Imax")
+        f_disp_vec_ini = st.text_input("Función SCADA Vecino:", value="Disparo por S/E vecina")
+        f_disp_vec_fin = st.text_input("Función Relé Vecino:", value="Arrastre desde SSEE colateral activo")
         
-      
         c_st1, c_st2, c_st3 = st.columns(3)
         st_ap = c_st1.text_input("ST Aperturado:", value="1404241")
         st_vec = c_st2.text_input("ST Vecino:", value="1404242")
@@ -399,7 +427,7 @@ with col_form:
         
         corriente_val = st.text_input("Corriente registrada (A):", value="2450")
 
-    with st.expander("3. Datos de Operación y Sistema"):
+    with st.expander("3. Datos de Operación"):
         c_op1, c_op2 = st.columns(2)
         fecha_val = c_op1.date_input("Fecha:", value=datetime.today()).strftime("%d/%m/%Y")
         dia_val = c_op2.selectbox("Día:", ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"])
@@ -409,8 +437,8 @@ with col_form:
         condicion = c_op4.text_input("Condición Señales:", value="Normal")
         
         c_op5, c_op6 = st.columns(2)
-        operacion_val = c_op5.text_input("Horario Operación:", value="Hora Valle")
-        # zona_val = c_op6.text_input("Zona Eléctrica:", value="Zona 3")
+        operacion_val = c_op5.text_input("Horario Operación:", value="Comercial")
+        zona_manual = c_op6.text_input("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
 
     with st.expander("4. Cronología y Horas (HH:MM:SS)"):
         h_disp = st.text_input("Hora disparo SCADA:", value="21:15:02")
@@ -419,16 +447,14 @@ with col_form:
         h_vcierre = st.text_input("Hora recierre Vecino:", value="21:15:12")
         h_rep = st.text_input("Hora reporte CCM:", value="21:20:00")
         h_env_st = st.text_input("Hora envío ST:", value="21:25:00")
-        h_foto_disp = st.text_input("Hora reporte Técnico Sub:", value="21:32:00")
-        h_foto_vec = st.text_input("Hora reporte Técnico Vecino:", value="22:23:00")
+        h_foto_disp = st.text_input("Hora reporte Subestaciones:", value="21:32:00")
+        h_foto_vec = st.text_input("Hora reporte Vecino:", value="22:23:00")
         h_cat = st.text_input("Hora reporte Catenaria:", value="07:28:00")
 
     with st.expander("5. Personal Involucrado"):
         sup_pco_val = st.text_input("Supervisor PCO:", value="Jesús Salguedo")
         per_sub_val = st.text_input("Personal Subestaciones:", value="Carlos Morales")
         per_cat_val = st.text_input("Personal Catenarias:", value="Luis Vargas")
-
-
 context = {
     # 1, 3, 7, 16, 20 (Autocompletados Aperturado)
     "interruptor_aperturado": datos_ap["interruptor"],
