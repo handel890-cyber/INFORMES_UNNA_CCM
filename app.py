@@ -504,8 +504,6 @@ context = {
     "per_sub": per_sub_val,
     "per_cat": per_cat_val
 }
-import streamlit.components.v1 as components
-import base64
 with col_preview:
     st.header("📄 Vista Previa Real del Documento")
 
