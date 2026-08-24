@@ -409,8 +409,8 @@ with col_form:
         condicion = c_op4.text_input("Condición Señales:", value="Normal")
         
         c_op5, c_op6 = st.columns(2)
-        operacion_val = c_op5.text_input("Horario Operación:", value="Comercial")
-        zona_val = c_op6.text_input("Zona Eléctrica:", value="Zona 3")
+        operacion_val = c_op5.text_input("Horario Operación:", value="Hora Valle")
+        # zona_val = c_op6.text_input("Zona Eléctrica:", value="Zona 3")
 
     with st.expander("4. Cronología y Horas (HH:MM:SS)"):
         h_disp = st.text_input("Hora disparo SCADA:", value="21:15:02")
@@ -458,7 +458,7 @@ context = {
     "tiempo_entre_trenes": headway,
     "condicion_señales": condicion,
     "operacion": operacion_val,
-    "zona": zona_val,
+    "zona": zona,
 
     # Cronología
     "hora_vicos_disparo": h_disp,
