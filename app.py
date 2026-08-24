@@ -447,8 +447,6 @@ context = {
     # Funciones y protecciones
     "funcion_disparo_inicial": f_disp_ini,
     "funcion_disparo_final": f_disp_fin,
-    "funcion_disparo_vecina_inicial": f_disp_vec_ini,
-    "funcion_disparo_vecina_final": f_disp_vec_fin,
     "st_aperturado": st_ap,
     "st_vecino": st_vec,
     "st_zona": st_zn,
