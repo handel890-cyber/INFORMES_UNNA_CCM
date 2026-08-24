@@ -140,170 +140,62 @@ context = {
     "per_cat": per_cat_val
 }
 
+import streamlit.components.v1 as components
+import base64
+
 with col_preview:
-    st.header("📄 Vista Previa (Formato Word A4)")
+    st.header("📄 Vista Previa Real del Documento")
 
-    # 1. Estilos CSS para simular hoja Word formal
-    hoja_estilos = """
-    <style>
-        .hoja-word {
-            background-color: #ffffff;
-            color: #1a1a1a;
-            padding: 35px 45px;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            font-size: 13px;
-            line-height: 1.5;
-            border: 1px solid #d3d3d3;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-            border-radius: 4px;
-            max-height: 85vh;
-            overflow-y: auto;
-        }
-        .hoja-word h3 {
-            color: #0b3c5d;
-            font-size: 14px;
-            margin-top: 18px;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            border-bottom: 1px solid #0b3c5d;
-            padding-bottom: 3px;
-        }
-        .variable-destacada {
-            background-color: #fff2a8;
-            padding: 1px 4px;
-            border-radius: 3px;
-            font-weight: 600;
-            color: #000;
-        }
-        .tabla-word {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 12px;
-        }
-        .tabla-word th, .tabla-word td {
-            border: 1px solid #7f8c8d;
-            padding: 6px 8px;
-            text-align: left;
-        }
-        .tabla-word th {
-            background-color: #e9ecef;
-            color: #2c3e50;
-            font-weight: bold;
-            text-align: center;
-        }
-        .item-lista {
-            margin-bottom: 6px;
-        }
-    </style>
-    """
-
-    # 2. Estructura HTML con tus variables dinámicas
-    contenido_html = f"""
-    {hoja_estilos}
-    <div class="hoja-word">
-        <h2 style="text-align: center; font-size: 16px; margin-bottom: 20px; color: #111;">
-            INFORME TÉCNICO DE DISPARO Y RECIERRE DE CELDAS DC
-        </h2>
-
-        <h3>1. EVENTO: DISPARO CON RECIERRE DE INTERRUPTORES {context['interruptor_aperturado']} Y {context['interruptor_vecino']}</h3>
-        <p>El presente informe tiene como objetivo dar a conocer los detalles del evento de apertura de los interruptores con recierre en las celdas DC:</p>
-        
-        <div class="item-lista">
-            Ø <span class="variable-destacada">{context['alimentador_ser_aperturado']}</span> en el sistema SCADA VICOS RSC por función 
-            “<span class="variable-destacada">{context['funcion_disparo_inicial']}</span>” y por actuación del relé Sitras PRO por función 
-            “<span class="variable-destacada">{context['funcion_disparo_final']}</span>”.
-        </div>
-        <div class="item-lista">
-            Ø <span class="variable-destacada">{context['alimentador_ser_vecino']}</span> en el sistema SCADA_VICOS RSC por función 
-            “<span class="variable-destacada">{context['funcion_disparo_vecina_inicial']}</span>” y por actuación del relé Sitras PRO por función 
-            “<span class="variable-destacada">{context['funcion_disparo_vecina_final']}</span>”.
-        </div>
-
-        <h3>2. UBICACIÓN, FECHA Y HORA</h3>
-        <p>
-            <strong>Subestaciones:</strong> <span class="variable-destacada">{context['ser_aperturado']}</span> y <span class="variable-destacada">{context['ser_vecino']}</span><br>
-            <strong>Fecha:</strong> {context['dia']} {context['fecha']}<br>
-            <strong>Hora:</strong> <span class="variable-destacada">{context['hora_vicos_disparo']}</span> horas; según sistema SCADA_VICOS RSC.
-        </p>
-
-        <h3>3. DATOS OPERATIVOS AL MOMENTO DEL EVENTO</h3>
-        <p>
-            • <strong>Headway de trenes:</strong> {context['tiempo_entre_trenes']} min<br>
-            • <strong>Condición:</strong> {context['condicion_señales']}<br>
-            • <strong>Horario de Operación:</strong> {context['operacion']}<br>
-            • <strong>Zona eléctrica afectada:</strong> {context['zona']}
-        </p>
-
-        <h3>4. CRONOLOGÍA DE EVENTOS</h3>
-        <table class="tabla-word">
-            <thead>
-                <tr>
-                    <th style="width: 15%;">HORA</th>
-                    <th style="width: 25%;">UBICACIÓN</th>
-                    <th style="width: 60%;">DESCRIPCIÓN DEL EVENTO</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>{context['hora_vicos_disparo']}</td>
-                    <td><strong>{context['ser_aperturado']}</strong></td>
-                    <td>Se registró en SCADA_VICOS función “{context['funcion_disparo_inicial']}” del {context['alimentador_aperturado']}. En relé Sitras PRO: “{context['funcion_disparo_final']}” (ST {context['st_aperturado']}).</td>
-                </tr>
-                <tr>
-                    <td>{context['hora_vicos_vecino']}</td>
-                    <td><strong>{context['ser_vecino']}</strong></td>
-                    <td>Se registró en SCADA_VICOS función “{context['funcion_disparo_vecina_inicial']}” del {context['alimentador_vecino']}. En relé Sitras PRO: “{context['funcion_disparo_vecina_final']}” (ST {context['st_vecino']}).</td>
-                </tr>
-                <tr>
-                    <td>{context['hora_vicos_dcierre']}</td>
-                    <td><strong>{context['ser_aperturado']}</strong></td>
-                    <td>Recierre automático del interruptor {context['alimentador_aperturado_num']} en {context['alimentador_aperturado']} con resultado exitoso.</td>
-                </tr>
-                <tr>
-                    <td>{context['hora_vicos_vcierre']}</td>
-                    <td><strong>{context['ser_vecino']}</strong></td>
-                    <td>Recierre automático del interruptor {context['alimentador_vecino_num']} en {context['alimentador_vecino']} con resultado exitoso.</td>
-                </tr>
-                <tr>
-                    <td>{context['hora_reporte']}</td>
-                    <td>CCM</td>
-                    <td>Se comunica al supervisor de PCO {context['sup_pco']}. Reporte en grupo CCM_SUB_CAT de SYC.</td>
-                </tr>
-                <tr>
-                    <td>{context['hora_foto_disparo']}</td>
-                    <td>{context['ser_aperturado']}</td>
-                    <td>Técnico {context['per_sub']} informa relé {context['alimentador_aperturado']} registró “{context['funcion_disparo_final']}” con {context['corriente']} A. Operativo sin alarmas.</td>
-                </tr>
-                <tr>
-                    <td>{context['hora_cat']}</td>
-                    <td>Zona {context['zona']} (Vía principal)</td>
-                    <td>Técnico Catenarias {context['per_cat']} realizó inspección visual LAC en zona {context['zona']}. Sin observaciones.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    """
-
-    # 3. Renderizar el HTML en Streamlit
-    st.markdown(contenido_html, unsafe_allow_html=True)
-    
-    st.write("") # Espaciador
-
-    # 4. Generación y descarga del .docx
+    # Si hay plantilla cargada o local, generamos el docx en memoria
     if plantilla_word is not None:
         doc = DocxTemplate(plantilla_word)
         doc.render(context)
+        
         buffer = io.BytesIO()
         doc.save(buffer)
         buffer.seek(0)
+        docx_bytes = buffer.getvalue()
         
+        # Codificamos a Base64 para pasarlo al visor JS
+        docx_b64 = base64.b64encode(docx_bytes).decode("utf-8")
+
+        # Componente visualizador docx-preview
+        viewer_html = f"""
+        <div id="document-container" style="background-color: #525659; padding: 20px; height: 750px; overflow-y: auto; border-radius: 6px;"></div>
+        
+        <!-- Librería JSZip y docx-preview desde CDN -->
+        <script src="https://unpkg.com/jszip/dist/jszip.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.min.js"></script>
+        
+        <script>
+            var base64Data = "{docx_b64}";
+            var byteCharacters = atob(base64Data);
+            var byteNumbers = new Array(byteCharacters.length);
+            for (var i = 0; i < byteCharacters.length; i++) {{
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }}
+            var byteArray = new Uint8Array(byteNumbers);
+            var blob = new Blob([byteArray], {{type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}});
+
+            var container = document.getElementById("document-container");
+            docx.renderAsync(blob, container)
+                .then(function() {{
+                    console.log("Word renderizado con éxito");
+                }})
+                .catch(function(err) {{
+                    console.error("Error al renderizar docx:", err);
+                }});
+        </script>
+        """
+        
+        components.html(viewer_html, height=780, scrolling=False)
+
         st.download_button(
-            label="📥 Descargar Informe Oficial (.docx)",
+            label="📥 Descargar Informe Completo (.docx)",
             data=buffer,
             file_name=f"Informe_Disparo_{context['ser_aperturado']}_{context['fecha'].replace('/', '-')}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             use_container_width=True
         )
     else:
-        st.warning("⚠️ Carga el archivo base `.docx` en el panel izquierdo para habilitar la exportación.")
+        st.info("💡 Carga o selecciona tu plantilla `.docx` para ver la previsualización interactiva.")
