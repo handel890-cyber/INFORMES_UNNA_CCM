@@ -12,326 +12,46 @@ st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM"
 # 1. CATÁLOGO COMPLETO DE ALIMENTADORES Y ZONAS
 # =========================================================
 CATALOGO_ALIMENTADORES = {
-    "SER01_PTVES - AL3 (154-3)": {
-        "interruptor": "154-3 SER01_PTVES",
-        "alimentador_ser": "AL3-154 SER01_PTVES",
-        "ser": "SER01_PTVES",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "201,203"
-    },
-    "SER01_PTVES - AL4 (154-4)": {
-        "interruptor": "154-4 SER01_PTVES",
-        "alimentador_ser": "AL4-154 SER01_PTVES",
-        "ser": "SER01_PTVES",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "202,204"
-    },
-    "SER03_PIN - AL1 (154-1)": {
-        "interruptor": "154-1 SER03_PIN",
-        "alimentador_ser": "AL1-154 SER03_PIN",
-        "ser": "SER03_PIN",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "201,203"
-    },
-    "SER03_PIN - AL2 (154-2)": {
-        "interruptor": "154-2 SER03_PIN",
-        "alimentador_ser": "AL2-154 SER03_PIN",
-        "ser": "SER03_PIN",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "202,204"
-    },
-    "SER03_PIN - AL3 (154-3)": {
-        "interruptor": "154-3 SER03_PIN",
-        "alimentador_ser": "AL3-154 SER03_PIN",
-        "ser": "SER03_PIN",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "205"
-    },
-    "SER03_PIN - AL4 (154-4)": {
-        "interruptor": "154-4 SER03_PIN",
-        "alimentador_ser": "AL4-154 SER03_PIN",
-        "ser": "SER03_PIN",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "206"
-    },
-    "SER05_VMA - AL1 (154-1)": {
-        "interruptor": "154-1 SER05_VMA",
-        "alimentador_ser": "AL1-154 SER05_VMA",
-        "ser": "SER05_VMA",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "205"
-    },
-    "SER05_VMA - AL2 (154-2)": {
-        "interruptor": "154-2 SER05_VMA",
-        "alimentador_ser": "AL2-154 SER05_VMA",
-        "ser": "SER05_VMA",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "206"
-    },
-    "SER05_VMA - AL3 (154-3)": {
-        "interruptor": "154-3 SER05_VMA",
-        "alimentador_ser": "AL3-154 SER05_VMA",
-        "ser": "SER05_VMA",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "207"
-    },
-    "SER05_VMA - AL4 (154-4)": {
-        "interruptor": "154-4 SER05_VMA",
-        "alimentador_ser": "AL4-154 SER05_VMA",
-        "ser": "SER05_VMA",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "208"
-    },
-    "SER08_ATO - AL1 (154-1)": {
-        "interruptor": "154-1 SER08_ATO",
-        "alimentador_ser": "AL1-154 SER08_ATO",
-        "ser": "SER08_ATO",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "207"
-    },
-    "SER08_ATO - AL2 (154-2)": {
-        "interruptor": "154-2 SER08_ATO",
-        "alimentador_ser": "AL2-154 SER08_ATO",
-        "ser": "SER08_ATO",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "208"
-    },
-    "SER08_ATO - AL3 (154-3)": {
-        "interruptor": "154-3 SER08_ATO",
-        "alimentador_ser": "AL3-154 SER08_ATO",
-        "ser": "SER08_ATO",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "209"
-    },
-    "SER08_ATO - AL4 (154-4)": {
-        "interruptor": "154-4 SER08_ATO",
-        "alimentador_ser": "AL4-154 SER08_ATO",
-        "ser": "SER08_ATO",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "210"
-    },
-    "SER11_CAB - AL1 (154-1)": {
-        "interruptor": "154-1 SER11_CAB",
-        "alimentador_ser": "AL1-154 SER11_CAB",
-        "ser": "SER11_CAB",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "209"
-    },
-    "SER11_CAB - AL2 (154-2)": {
-        "interruptor": "154-2 SER11_CAB",
-        "alimentador_ser": "AL2-154 SER11_CAB",
-        "ser": "SER11_CAB",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "210"
-    },
-    "SER11_CAB - AL3 (154-3)": {
-        "interruptor": "154-3 SER11_CAB",
-        "alimentador_ser": "AL3-154 SER11_CAB",
-        "ser": "SER11_CAB",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "211"
-    },
-    "SER11_CAB - AL4 (154-4)": {
-        "interruptor": "154-4 SER11_CAB",
-        "alimentador_ser": "AL4-154 SER11_CAB",
-        "ser": "SER11_CAB",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "212"
-    },
-    "SER14_CUL - AL1 (154-1)": {
-        "interruptor": "154-1 SER14_CUL",
-        "alimentador_ser": "AL1-154 SER14_CUL",
-        "ser": "SER14_CUL",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "211"
-    },
-    "SER14_CUL - AL2 (154-2)": {
-        "interruptor": "154-2 SER14_CUL",
-        "alimentador_ser": "AL2-154 SER14_CUL",
-        "ser": "SER14_CUL",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "212"
-    },
-    "SER14_CUL - AL3 (154-3)": {
-        "interruptor": "154-3 SER14_CUL",
-        "alimentador_ser": "AL3-154 SER14_CUL",
-        "ser": "SER14_CUL",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "213"
-    },
-    "SER14_CUL - AL4 (154-4)": {
-        "interruptor": "154-4 SER14_CUL",
-        "alimentador_ser": "AL4-154 SER14_CUL",
-        "ser": "SER14_CUL",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "214"
-    },
-    "SER16_GAM - AL1 (154-1)": {
-        "interruptor": "154-1 SER16_GAM",
-        "alimentador_ser": "AL1-154 SER16_GAM",
-        "ser": "SER16_GAM",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "213"
-    },
-    "SER16_GAM - AL2 (154-2)": {
-        "interruptor": "154-2 SER16_GAM",
-        "alimentador_ser": "AL2-154 SER16_GAM",
-        "ser": "SER16_GAM",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "214"
-    },
-    "SER16_GAM - AL3 (154-3)": {
-        "interruptor": "154-3 SER16_GAM",
-        "alimentador_ser": "AL3-154 SER16_GAM",
-        "ser": "SER16_GAM",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "215"
-    },
-    "SER16_GAM - AL4 (154-4)": {
-        "interruptor": "154-4 SER16_GAM",
-        "alimentador_ser": "AL4-154 SER16_GAM",
-        "ser": "SER16_GAM",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "216"
-    },
-    "SER20_CAA - AL1 (154-1)": {
-        "interruptor": "154-1 SER20_CAA",
-        "alimentador_ser": "AL1-154 SER20_CAA",
-        "ser": "SER20_CAA",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "215"
-    },
-    "SER20_CAA - AL2 (154-2)": {
-        "interruptor": "154-2 SER20_CAA",
-        "alimentador_ser": "AL2-154 SER20_CAA",
-        "ser": "SER20_CAA",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "216"
-    },
-    "SER20_CAA - AL3 (154-3)": {
-        "interruptor": "154-3 SER20_CAA",
-        "alimentador_ser": "AL3-154 SER20_CAA",
-        "ser": "SER20_CAA",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "217"
-    },
-    "SER20_CAA - AL4 (154-4)": {
-        "interruptor": "154-4 SER20_CAA",
-        "alimentador_ser": "AL4-154 SER20_CAA",
-        "ser": "SER20_CAA",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "218"
-    },
-    "SER22_JAR - AL1 (154-1)": {
-        "interruptor": "154-1 SER22_JAR",
-        "alimentador_ser": "AL1-154 SER22_JAR",
-        "ser": "SER22_JAR",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "217"
-    },
-    "SER22_JAR - AL2 (154-2)": {
-        "interruptor": "154-2 SER22_JAR",
-        "alimentador_ser": "AL2-154 SER22_JAR",
-        "ser": "SER22_JAR",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "218"
-    },
-    "SER22_JAR - AL3 (154-3)": {
-        "interruptor": "154-3 SER22_JAR",
-        "alimentador_ser": "AL3-154 SER22_JAR",
-        "ser": "SER22_JAR",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "219"
-    },
-    "SER22_JAR - AL4 (154-4)": {
-        "interruptor": "154-4 SER22_JAR",
-        "alimentador_ser": "AL4-154 SER22_JAR",
-        "ser": "SER22_JAR",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "220"
-    },
-    "SER25_SMA - AL1 (154-1)": {
-        "interruptor": "154-1 SER25_SMA",
-        "alimentador_ser": "AL1-154 SER25_SMA",
-        "ser": "SER25_SMA",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "219"
-    },
-    "SER25_SMA - AL2 (154-2)": {
-        "interruptor": "154-2 SER25_SMA",
-        "alimentador_ser": "AL2-154 SER25_SMA",
-        "ser": "SER25_SMA",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "220"
-    },
-    "SER25_SMA - AL3 (154-3)": {
-        "interruptor": "154-3 SER25_SMA",
-        "alimentador_ser": "AL3-154 SER25_SMA",
-        "ser": "SER25_SMA",
-        "alimentador": "AL3",
-        "interruptor_num": "154-3",
-        "zona": "221-223"
-    },
-    "SER25_SMA - AL4 (154-4)": {
-        "interruptor": "154-4 SER25_SMA",
-        "alimentador_ser": "AL4-154 SER25_SMA",
-        "ser": "SER25_SMA",
-        "alimentador": "AL4",
-        "interruptor_num": "154-4",
-        "zona": "222-224"
-    },
-    "SER27_BAY - AL1 (154-1)": {
-        "interruptor": "154-1 SER27_BAY",
-        "alimentador_ser": "AL1-154 SER27_BAY",
-        "ser": "SER27_BAY",
-        "alimentador": "AL1",
-        "interruptor_num": "154-1",
-        "zona": "221-223"
-    },
-    "SER27_BAY - AL2 (154-2)": {
-        "interruptor": "154-2 SER27_BAY",
-        "alimentador_ser": "AL2-154 SER27_BAY",
-        "ser": "SER27_BAY",
-        "alimentador": "AL2",
-        "interruptor_num": "154-2",
-        "zona": "222-224"
-    }
+    "SER01_PTVES - AL3 (154-3)": {"interruptor": "154-3 SER01_PTVES", "alimentador_ser": "AL3-154 SER01_PTVES", "ser": "SER01_PTVES", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "201,203"},
+    "SER01_PTVES - AL4 (154-4)": {"interruptor": "154-4 SER01_PTVES", "alimentador_ser": "AL4-154 SER01_PTVES", "ser": "SER01_PTVES", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "202,204"},
+    "SER03_PIN - AL1 (154-1)": {"interruptor": "154-1 SER03_PIN", "alimentador_ser": "AL1-154 SER03_PIN", "ser": "SER03_PIN", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "201,203"},
+    "SER03_PIN - AL2 (154-2)": {"interruptor": "154-2 SER03_PIN", "alimentador_ser": "AL2-154 SER03_PIN", "ser": "SER03_PIN", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "202,204"},
+    "SER03_PIN - AL3 (154-3)": {"interruptor": "154-3 SER03_PIN", "alimentador_ser": "AL3-154 SER03_PIN", "ser": "SER03_PIN", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "205"},
+    "SER03_PIN - AL4 (154-4)": {"interruptor": "154-4 SER03_PIN", "alimentador_ser": "AL4-154 SER03_PIN", "ser": "SER03_PIN", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "206"},
+    "SER05_VMA - AL1 (154-1)": {"interruptor": "154-1 SER05_VMA", "alimentador_ser": "AL1-154 SER05_VMA", "ser": "SER05_VMA", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "205"},
+    "SER05_VMA - AL2 (154-2)": {"interruptor": "154-2 SER05_VMA", "alimentador_ser": "AL2-154 SER05_VMA", "ser": "SER05_VMA", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "206"},
+    "SER05_VMA - AL3 (154-3)": {"interruptor": "154-3 SER05_VMA", "alimentador_ser": "AL3-154 SER05_VMA", "ser": "SER05_VMA", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "207"},
+    "SER05_VMA - AL4 (154-4)": {"interruptor": "154-4 SER05_VMA", "alimentador_ser": "AL4-154 SER05_VMA", "ser": "SER05_VMA", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "208"},
+    "SER08_ATO - AL1 (154-1)": {"interruptor": "154-1 SER08_ATO", "alimentador_ser": "AL1-154 SER08_ATO", "ser": "SER08_ATO", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "207"},
+    "SER08_ATO - AL2 (154-2)": {"interruptor": "154-2 SER08_ATO", "alimentador_ser": "AL2-154 SER08_ATO", "ser": "SER08_ATO", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "208"},
+    "SER08_ATO - AL3 (154-3)": {"interruptor": "154-3 SER08_ATO", "alimentador_ser": "AL3-154 SER08_ATO", "ser": "SER08_ATO", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "209"},
+    "SER08_ATO - AL4 (154-4)": {"interruptor": "154-4 SER08_ATO", "alimentador_ser": "AL4-154 SER08_ATO", "ser": "SER08_ATO", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "210"},
+    "SER11_CAB - AL1 (154-1)": {"interruptor": "154-1 SER11_CAB", "alimentador_ser": "AL1-154 SER11_CAB", "ser": "SER11_CAB", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "209"},
+    "SER11_CAB - AL2 (154-2)": {"interruptor": "154-2 SER11_CAB", "alimentador_ser": "AL2-154 SER11_CAB", "ser": "SER11_CAB", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "210"},
+    "SER11_CAB - AL3 (154-3)": {"interruptor": "154-3 SER11_CAB", "alimentador_ser": "AL3-154 SER11_CAB", "ser": "SER11_CAB", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "211"},
+    "SER11_CAB - AL4 (154-4)": {"interruptor": "154-4 SER11_CAB", "alimentador_ser": "AL4-154 SER11_CAB", "ser": "SER11_CAB", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "212"},
+    "SER14_CUL - AL1 (154-1)": {"interruptor": "154-1 SER14_CUL", "alimentador_ser": "AL1-154 SER14_CUL", "ser": "SER14_CUL", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "211"},
+    "SER14_CUL - AL2 (154-2)": {"interruptor": "154-2 SER14_CUL", "alimentador_ser": "AL2-154 SER14_CUL", "ser": "SER14_CUL", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "212"},
+    "SER14_CUL - AL3 (154-3)": {"interruptor": "154-3 SER14_CUL", "alimentador_ser": "AL3-154 SER14_CUL", "ser": "SER14_CUL", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "213"},
+    "SER14_CUL - AL4 (154-4)": {"interruptor": "154-4 SER14_CUL", "alimentador_ser": "AL4-154 SER14_CUL", "ser": "SER14_CUL", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "214"},
+    "SER16_GAM - AL1 (154-1)": {"interruptor": "154-1 SER16_GAM", "alimentador_ser": "AL1-154 SER16_GAM", "ser": "SER16_GAM", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "213"},
+    "SER16_GAM - AL2 (154-2)": {"interruptor": "154-2 SER16_GAM", "alimentador_ser": "AL2-154 SER16_GAM", "ser": "SER16_GAM", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "214"},
+    "SER16_GAM - AL3 (154-3)": {"interruptor": "154-3 SER16_GAM", "alimentador_ser": "AL3-154 SER16_GAM", "ser": "SER16_GAM", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "215"},
+    "SER16_GAM - AL4 (154-4)": {"interruptor": "154-4 SER16_GAM", "alimentador_ser": "AL4-154 SER16_GAM", "ser": "SER16_GAM", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "216"},
+    "SER20_CAA - AL1 (154-1)": {"interruptor": "154-1 SER20_CAA", "alimentador_ser": "AL1-154 SER20_CAA", "ser": "SER20_CAA", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "215"},
+    "SER20_CAA - AL2 (154-2)": {"interruptor": "154-2 SER20_CAA", "alimentador_ser": "AL2-154 SER20_CAA", "ser": "SER20_CAA", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "216"},
+    "SER20_CAA - AL3 (154-3)": {"interruptor": "154-3 SER20_CAA", "alimentador_ser": "AL3-154 SER20_CAA", "ser": "SER20_CAA", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "217"},
+    "SER20_CAA - AL4 (154-4)": {"interruptor": "154-4 SER20_CAA", "alimentador_ser": "AL4-154 SER20_CAA", "ser": "SER20_CAA", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "218"},
+    "SER22_JAR - AL1 (154-1)": {"interruptor": "154-1 SER22_JAR", "alimentador_ser": "AL1-154 SER22_JAR", "ser": "SER22_JAR", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "217"},
+    "SER22_JAR - AL2 (154-2)": {"interruptor": "154-2 SER22_JAR", "alimentador_ser": "AL2-154 SER22_JAR", "ser": "SER22_JAR", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "218"},
+    "SER22_JAR - AL3 (154-3)": {"interruptor": "154-3 SER22_JAR", "alimentador_ser": "AL3-154 SER22_JAR", "ser": "SER22_JAR", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "219"},
+    "SER22_JAR - AL4 (154-4)": {"interruptor": "154-4 SER22_JAR", "alimentador_ser": "AL4-154 SER22_JAR", "ser": "SER22_JAR", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "220"},
+    "SER25_SMA - AL1 (154-1)": {"interruptor": "154-1 SER25_SMA", "alimentador_ser": "AL1-154 SER25_SMA", "ser": "SER25_SMA", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "219"},
+    "SER25_SMA - AL2 (154-2)": {"interruptor": "154-2 SER25_SMA", "alimentador_ser": "AL2-154 SER25_SMA", "ser": "SER25_SMA", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "220"},
+    "SER25_SMA - AL3 (154-3)": {"interruptor": "154-3 SER25_SMA", "alimentador_ser": "AL3-154 SER25_SMA", "ser": "SER25_SMA", "alimentador": "AL3", "interruptor_num": "154-3", "zona": "221-223"},
+    "SER25_SMA - AL4 (154-4)": {"interruptor": "154-4 SER25_SMA", "alimentador_ser": "AL4-154 SER25_SMA", "ser": "SER25_SMA", "alimentador": "AL4", "interruptor_num": "154-4", "zona": "222-224"},
+    "SER27_BAY - AL1 (154-1)": {"interruptor": "154-1 SER27_BAY", "alimentador_ser": "AL1-154 SER27_BAY", "ser": "SER27_BAY", "alimentador": "AL1", "interruptor_num": "154-1", "zona": "221-223"},
+    "SER27_BAY - AL2 (154-2)": {"interruptor": "154-2 SER27_BAY", "alimentador_ser": "AL2-154 SER27_BAY", "ser": "SER27_BAY", "alimentador": "AL2", "interruptor_num": "154-2", "zona": "222-224"}
 }
 
 st.title("⚡ Generador de Informes de Disparo y Recierre DC")
@@ -344,7 +64,6 @@ col_form, col_preview = st.columns([1, 1], gap="medium")
 with col_form:
     st.header("📝 Parámetros del Evento")
 
-    # Selección o carga de plantilla
     plantilla_path = "plantilla_base.docx"
     plantilla_doc = None
     
@@ -356,13 +75,11 @@ with col_form:
             plantilla_doc = plantilla_subida
 
     with st.expander("1. Selección de Equipos (Filtro por Zona)", expanded=True):
-        # 1. Seleccionar Alimentador Aperturado
         opciones_aperturado = list(CATALOGO_ALIMENTADORES.keys())
-        sel_aperturado = st.selectbox("Subestación / Celda Aperturada:", opciones_aperturado, index=2) # Default SER03_PIN AL1
+        sel_aperturado = st.selectbox("Subestación / Celda Aperturada:", opciones_aperturado, index=2)
         datos_ap = CATALOGO_ALIMENTADORES[sel_aperturado]
         zona_detectada = datos_ap["zona"]
 
-        # 2. Filtrar Vecinos que comparten exactamente la misma zona
         opciones_vecino_filtradas = [
             k for k, v in CATALOGO_ALIMENTADORES.items() 
             if v["zona"] == zona_detectada and k != sel_aperturado
@@ -370,7 +87,6 @@ with col_form:
 
         if not opciones_vecino_filtradas:
             opciones_vecino_filtradas = [k for k in CATALOGO_ALIMENTADORES.keys() if k != sel_aperturado]
-            st.warning(f"No se encontraron alimentadores vecinos con la zona exacta '{zona_detectada}'.")
 
         sel_vecino = st.selectbox("Subestación / Celda Vecina (Colateral filtrado):", opciones_vecino_filtradas, index=0)
         datos_vec = CATALOGO_ALIMENTADORES[sel_vecino]
@@ -403,16 +119,17 @@ with col_form:
         operacion_val = c_op5.text_input("Horario Operación:", value="Comercial")
         zona_manual = c_op6.text_input("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
 
-    with st.expander("4. Cronología y Horas (HH:MM:SS)"):
-        h_disp = st.text_input("Hora disparo SCADA:", value="21:15:02")
-        h_vec = st.text_input("Hora disparo Vecino:", value="21:15:03")
+    with st.expander("4. Cronología y Horas (HH:MM:SS)", expanded=True):
+        st.info("💡 Las filas se reordenarán automáticamente en la tabla según la hora que indiques.")
+        h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value="21:15:02")
+        h_vec = st.text_input("Hora disparo Vecino (SCADA):", value="21:15:03")
         h_dcierre = st.text_input("Hora recierre Aperturado:", value="21:15:10")
         h_vcierre = st.text_input("Hora recierre Vecino:", value="21:15:12")
-        h_rep = st.text_input("Hora reporte CCM:", value="21:20:00")
-        h_env_st = st.text_input("Hora envío ST:", value="21:25:00")
-        h_foto_disp = st.text_input("Hora reporte Subestaciones:", value="21:32:00")
-        h_foto_vec = st.text_input("Hora reporte Vecino:", value="22:23:00")
-        h_cat = st.text_input("Hora reporte Catenaria:", value="07:28:00")
+        h_rep = st.text_input("Hora reporte CCM a PCO:", value="21:20:00")
+        h_env_st = st.text_input("Hora envío solicitud ST a cuadrillas:", value="21:25:00")
+        h_foto_disp = st.text_input("Hora informe Técnico Aperturado:", value="21:32:00")
+        h_foto_vec = st.text_input("Hora informe Técnico Vecino:", value="22:23:00")
+        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="07:28:00")
 
     with st.expander("5. Personal Involucrado"):
         sup_pco_val = st.text_input("Supervisor PCO:", value="Jesús Salguedo")
@@ -420,7 +137,78 @@ with col_form:
         per_cat_val = st.text_input("Personal Catenarias:", value="Luis Vargas")
 
 # =========================================================
-# DICCIONARIO DE CONTEXTO (VARIABLES JINJA2)
+# CONSTRUCCIÓN Y AUTO-ORDENAMIENTO DE EVENTOS
+# =========================================================
+eventos_para_ordenar = []
+
+if h_disp.strip():
+    eventos_para_ordenar.append({
+        "hora": h_disp.strip(),
+        "ubicacion": datos_ap["ser"],
+        "descripcion": f"Se registró en el sistema SCADA_VICOS RSC, función “{f_disp_ini}” del alimentador {datos_ap['alimentador']}. Asimismo, se registró en el relé Sitras PRO por función “{f_disp_fin}” (ST {st_ap})."
+    })
+
+if h_vec.strip():
+    eventos_para_ordenar.append({
+        "hora": h_vec.strip(),
+        "ubicacion": datos_vec["ser"],
+        "descripcion": f"Se registró en el sistema SCADA_VICOS RSC, función “{f_disp_vec_ini}” del alimentador {datos_vec['alimentador']}. Asimismo, se registró en el relé Sitras PRO por función “{f_disp_vec_fin}” (ST {st_vec})."
+    })
+
+if h_dcierre.strip():
+    eventos_para_ordenar.append({
+        "hora": h_dcierre.strip(),
+        "ubicacion": datos_ap["ser"],
+        "descripcion": f"Recierre automático del interruptor {datos_ap['interruptor_num']} en el alimentador {datos_ap['alimentador']} con resultado exitoso."
+    })
+
+if h_vcierre.strip():
+    eventos_para_ordenar.append({
+        "hora": h_vcierre.strip(),
+        "ubicacion": datos_vec["ser"],
+        "descripcion": f"Recierre automático del interruptor {datos_vec['interruptor_num']} en el alimentador {datos_vec['alimentador']} con resultado exitoso."
+    })
+
+if h_rep.strip():
+    eventos_para_ordenar.append({
+        "hora": h_rep.strip(),
+        "ubicacion": "CCM",
+        "descripcion": f"Se comunica al supervisor de PCO {sup_pco_val}.\n\nSe reporta en el grupo de WhatsApp de CCM_SUB_CAT de SYC."
+    })
+
+if h_env_st.strip():
+    eventos_para_ordenar.append({
+        "hora": h_env_st.strip(),
+        "ubicacion": "CCM",
+        "descripcion": f"Personal de Subestaciones, {per_sub_val}; realizar inspección de las celdas DC: {datos_ap['alimentador_ser']} (ST {st_ap}) y {datos_vec['alimentador_ser']} (ST {st_vec}).\n\nPersonal de Catenarias, {per_cat_val}; realizar inspección de la {zona_manual} de vía principal (ST {st_zn})."
+    })
+
+if h_foto_disp.strip():
+    eventos_para_ordenar.append({
+        "hora": h_foto_disp.strip(),
+        "ubicacion": datos_ap["ser"],
+        "descripcion": f"El técnico de Subestaciones, {per_sub_val}; informa que el relé Sitras PRO del alimentador {datos_ap['alimentador']}, registró:\n\n· “{f_disp_fin}” con el valor de {corriente_val} A\n\nReporta que se encuentra operativo sin alarmas presentes y en servicio."
+    })
+
+if h_foto_vec.strip():
+    eventos_para_ordenar.append({
+        "hora": h_foto_vec.strip(),
+        "ubicacion": datos_vec["ser"],
+        "descripcion": f"El técnico de Subestaciones, {per_sub_val}; informa que el relé Sitras PRO del alimentador {datos_vec['alimentador']} registró:\n\n· “Arrastre desde SSEE colateral activo”\n\nReporta que se encuentra operativo sin alarmas presentes y en servicio."
+    })
+
+if h_cat.strip():
+    eventos_para_ordenar.append({
+        "hora": h_cat.strip(),
+        "ubicacion": f"{zona_manual}\nVía principal",
+        "descripcion": f"El técnico de Catenarias, {per_cat_val}; informa que realizo inspección visual de la línea aérea de contacto en la {zona_manual} y reporta que no se encontró observaciones."
+    })
+
+# Ordenamiento cronológico automático
+cronologia_ordenada = sorted(eventos_para_ordenar, key=lambda x: str(x["hora"]))
+
+# =========================================================
+# DICCIONARIO DE CONTEXTO FINAL (JINJA2)
 # =========================================================
 context = {
     # Aperturado
@@ -455,16 +243,8 @@ context = {
     "operacion": operacion_val,
     "zona": zona_manual,
 
-    # Tiempos
-    "hora_vicos_disparo": h_disp,
-    "hora_vicos_vecino": h_vec,
-    "hora_vicos_dcierre": h_dcierre,
-    "hora_vicos_vcierre": h_vcierre,
-    "hora_reporte": h_rep,
-    "hora_envio_st": h_env_st,
-    "hora_foto_disparo": h_foto_disp,
-    "hora_foto_vecino": h_foto_vec,
-    "hora_cat": h_cat,
+    # Cronología dinámica ordenada
+    "cronologia": cronologia_ordenada,
 
     # Personal
     "sup_pco": sup_pco_val,
@@ -521,7 +301,7 @@ with col_preview:
             st.download_button(
                 label="📥 Descargar Informe Completo (.docx)",
                 data=buffer,
-                file_name=f"Informe_Disparo_{context['ser_aperturado']}_{context['fecha'].replace('/', '-')}.docx",
+                file_name=f"Informe_Disparo_{datos_ap['ser']}_{context['fecha'].replace('/', '-')}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 use_container_width=True
             )
