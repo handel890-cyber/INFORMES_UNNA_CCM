@@ -1,5 +1,5 @@
 import streamlit as st
-from docxtpl import DocxTemplate
+from docxtpl import DocxTemplate, Listing  # <-- Importación agregada
 import streamlit.components.v1 as components
 import io
 import base64
@@ -169,38 +169,39 @@ if h_vcierre.strip():
         "descripcion": f"Recierre automático del interruptor {datos_vec['interruptor_num']} en el alimentador {datos_vec['alimentador']} con resultado exitoso."
     })
 
+# --- Uso de Listing para los textos con saltos de línea (\n) ---
 if h_rep.strip():
     eventos_para_ordenar.append({
         "hora": h_rep.strip(),
         "ubicacion": "CCM",
-        "descripcion": f"Se comunica al supervisor de PCO {sup_pco_val}.\n\nSe reporta en el grupo de WhatsApp de CCM_SUB_CAT de SYC."
+        "descripcion": Listing(f"Se comunica al supervisor de PCO {sup_pco_val}.\n\nSe reporta en el grupo de WhatsApp de CCM_SUB_CAT de SYC.")
     })
 
 if h_env_st.strip():
     eventos_para_ordenar.append({
         "hora": h_env_st.strip(),
         "ubicacion": "CCM",
-        "descripcion": f"Personal de Subestaciones, {per_sub_val}; realizar inspección de las celdas DC: {datos_ap['alimentador_ser']} (ST {st_ap}) y {datos_vec['alimentador_ser']} (ST {st_vec}).\n\nPersonal de Catenarias, {per_cat_val}; realizar inspección de la {zona_manual} de vía principal (ST {st_zn})."
+        "descripcion": Listing(f"Personal de Subestaciones, {per_sub_val}; realizar inspección de las celdas DC: {datos_ap['alimentador_ser']} (ST {st_ap}) y {datos_vec['alimentador_ser']} (ST {st_vec}).\n\nPersonal de Catenarias, {per_cat_val}; realizar inspección de la {zona_manual} de vía principal (ST {st_zn}).")
     })
 
 if h_foto_disp.strip():
     eventos_para_ordenar.append({
         "hora": h_foto_disp.strip(),
         "ubicacion": datos_ap["ser"],
-        "descripcion": f"El técnico de Subestaciones, {per_sub_val}; informa que el relé Sitras PRO del alimentador {datos_ap['alimentador']}, registró:\n\n· “{f_disp_fin}” con el valor de {corriente_val} A\n\nReporta que se encuentra operativo sin alarmas presentes y en servicio."
+        "descripcion": Listing(f"El técnico de Subestaciones, {per_sub_val}; informa que el relé Sitras PRO del alimentador {datos_ap['alimentador']}, registró:\n\n· “{f_disp_fin}” con el valor de {corriente_val} A\n\nReporta que se encuentra operativo sin alarmas presentes y en servicio.")
     })
 
 if h_foto_vec.strip():
     eventos_para_ordenar.append({
         "hora": h_foto_vec.strip(),
         "ubicacion": datos_vec["ser"],
-        "descripcion": f"El técnico de Subestaciones, {per_sub_val}; informa que el relé Sitras PRO del alimentador {datos_vec['alimentador']} registró:\n\n· “Arrastre desde SSEE colateral activo”\n\nReporta que se encuentra operativo sin alarmas presentes y en servicio."
+        "descripcion": Listing(f"El técnico de Subestaciones, {per_sub_val}; informa que el relé Sitras PRO del alimentador {datos_vec['alimentador']} registró:\n\n· “Arrastre desde SSEE colateral activo”\n\nReporta que se encuentra operativo sin alarmas presentes y en servicio.")
     })
 
 if h_cat.strip():
     eventos_para_ordenar.append({
         "hora": h_cat.strip(),
-        "ubicacion": f"{zona_manual}\nVía principal",
+        "ubicacion": Listing(f"{zona_manual}\nVía principal"),
         "descripcion": f"El técnico de Catenarias, {per_cat_val}; informa que realizo inspección visual de la línea aérea de contacto en la {zona_manual} y reporta que no se encontró observaciones."
     })
 
