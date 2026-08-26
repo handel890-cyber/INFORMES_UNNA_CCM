@@ -418,15 +418,30 @@ with col_form:
         st_zn = c_st3.text_input("ST Zona:", value="1404245")
         corriente_val = st.text_input("Corriente registrada (A):", value="2450")
 
-    with st.expander("3. Datos de Operación"):
+with st.expander("3. Datos de Operación"):
         c_op1, c_op2 = st.columns(2)
-        fecha_val = c_op1.date_input("Fecha:", value=datetime.today()).strftime("%d/%m/%Y")
-        dia_val = c_op2.selectbox("Día:", ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"])
+        
+        # 1. Fecha y Cálculo Automático del Día
+        fecha_raw = c_op1.date_input("Fecha:", value=datetime.today())
+        fecha_val = fecha_raw.strftime("%d/%m/%Y")
+        
+        # Array con los días en español (0 = Lunes, 6 = Domingo)
+        dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+        dia_val = dias_semana[fecha_raw.weekday()]
+        
+        # Mostramos el día en un campo bloqueado (solo lectura)
+        c_op2.text_input("Día (Automático):", value=dia_val, disabled=True)
+        
         c_op3, c_op4 = st.columns(2)
         headway = c_op3.text_input("Headway (min):", value="3")
-        condicion = c_op4.text_input("Condición Señales:", value="Normal")
+        
+        # 2. Condición Señales ahora es un menú desplegable
+        condicion = c_op4.selectbox("Condición Señales:", ["Señales encendidas", "Señales apagadas"])
+        
         c_op5, c_op6 = st.columns(2)
-        operacion_val = c_op5.text_input("Horario Operación:", value="Comercial")
+        
+        # 3. Horario Operación ahora es un menú desplegable
+        operacion_val = c_op5.selectbox("Horario Operación:", ["Hora pico", "Hora valle"])
         zona_manual = c_op6.text_input("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
 
     with st.expander("4. Cronología y Horas (HH:MM:SS)", expanded=True):
