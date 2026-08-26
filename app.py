@@ -437,7 +437,7 @@ with col_form:
         headway = c_op3.text_input("Headway (min):", value="3")
         
         # 2. Condición Señales ahora es un menú desplegable
-        condicion = c_op4.selectbox("Condición Señales:", ["Señales encendidas", "Señales apagadas"])
+        condicion_señales = c_op4.selectbox("Condición Señales:", ["Señales encendidas", "Señales apagadas"])
         
         c_op5, c_op6 = st.columns(2)
         
@@ -453,8 +453,8 @@ with col_form:
         h_vcierre = st.text_input("Hora recierre Vecino:", value="21:15:12")
         h_rep = st.text_input("Hora reporte CCM a PCO:", value="21:20:00")
         h_env_st = st.text_input("Hora envío solicitud ST:", value="21:25:00")
-        h_foto_disp = st.text_input("Hora informe Técnico Aperturado:", value="21:32:00")
-        h_foto_vec = st.text_input("Hora informe Técnico Vecino:", value="22:23:00")
+        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="21:32:00")
+        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="22:23:00")
         h_cat = st.text_input("Hora informe Técnico Catenaria:", value="07:28:00")
 
     with st.expander("5. Personal Involucrado"):
