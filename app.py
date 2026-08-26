@@ -437,7 +437,7 @@ with col_form:
         headway = c_op3.text_input("Headway (min):", value="3")
         
         # 2. Condición Señales ahora es un menú desplegable
-        condicion_señales = c_op4.selectbox("Condición Señales:", ["Señales encendidas", "Señales apagadas"])
+        condicion_sen = c_op4.selectbox("Condición Señales:", ["Señales encendidas", "Señales apagadas"])
         
         c_op5, c_op6 = st.columns(2)
         
