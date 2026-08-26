@@ -445,7 +445,7 @@ with col_form:
         operacion_val = c_op5.selectbox("Horario Operación:", ["Hora pico", "Hora valle"])
         zona_manual = c_op6.text_input("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
 	
-    with st.expander("4. Cronología y Horas (HH:MM:SS)", expanded=True):
+    with st.expander("4. Cronología y Horas (HH:MM:SS)"):
         st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word.")
         h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value="21:15:02")
         h_vec = st.text_input("Hora disparo Vecino (SCADA):", value="21:15:03")
