@@ -1,6 +1,6 @@
-streamlit==1.36.0
+streamlit
 docxtpl
 python-docx
 pymupdf
 Pillow
-streamlit-drawable-canvas
+streamlit-drawable-canvas>=0.1.33
