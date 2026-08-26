@@ -8,19 +8,18 @@ from datetime import datetime
 import fitz  # PyMuPDF
 from PIL import Image, ImageDraw, ImageFont
 from streamlit_image_coordinates import streamlit_image_coordinates
+from docxtpl import DocxTemplate, InlineImage
+from docx.shared import Mm
 
 st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM")
 
 # =========================================================
-# FUNCIÓN DEL POP-UP (MODAL) ESTABLE CON FLECHAS
-# =========================================================
-# =========================================================
-# MODAL CON EDITOR CANVAS HTML5 / JS (CLIC DERECHO DESHACER)
+# MODAL CON ENVÍO DIRECTO A WORD (SIN DESCARGAS)
 # =========================================================
 @st.dialog("✏️ Editor Visual Sitras PRO", width="large")
 def modal_editor_sitras(pdf_bytes):
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    page = doc.load_page(0)
+    doc_pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
+    page = doc_pdf.load_page(0)
     pix = page.get_pixmap(dpi=130)
     img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
     w, h = pix.width, pix.height
@@ -31,33 +30,36 @@ def modal_editor_sitras(pdf_bytes):
     <head>
       <style>
         body {{ margin: 0; font-family: sans-serif; background-color: #262730; color: #fff; text-align: center; }}
-        #toolbar {{ padding: 8px; background: #1e1e24; display: flex; justify-content: center; gap: 12px; align-items: center; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }}
+        #toolbar {{ padding: 8px; background: #1e1e24; display: flex; justify-content: center; gap: 10px; align-items: center; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }}
         #instrucciones {{ font-weight: bold; color: #ff4b4b; }}
-        #canvas-wrapper {{ position: relative; display: inline-block; max-height: 520px; overflow-y: auto; border: 2px solid #555; border-radius: 4px; }}
+        #canvas-wrapper {{ position: relative; display: inline-block; max-height: 500px; overflow-y: auto; border: 2px solid #555; border-radius: 4px; }}
         canvas {{ display: block; cursor: crosshair; }}
         button {{ padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }}
         .btn-undo {{ background-color: #f39c12; color: white; }}
         .btn-reset {{ background-color: #555; color: white; }}
-        .btn-save {{ background-color: #27ae60; color: white; display: none; }}
+        .btn-word {{ background-color: #0078d4; color: white; display: none; font-size: 14px; padding: 8px 16px; }}
       </style>
     </head>
     <body>
       <div id="toolbar">
         <span id="instrucciones">Paso 1: Arrastra el mouse para encuadrar "Función de disparo".</span>
-        <button class="btn-undo" onclick="deshacer()">↩ Deshacer (Clic Derecho)</button>
+        <button class="btn-undo" onclick="deshacer()">↩ Deshacer</button>
         <button class="btn-reset" onclick="resetCanvas()">🔄 Reiniciar</button>
-        <button id="btnDescargar" class="btn-save" onclick="descargarImagen()">📥 Descargar Imagen Lista</button>
       </div>
 
       <div id="canvas-wrapper">
         <canvas id="canvasSitras" width="{w}" height="{h}"></canvas>
       </div>
 
+      <div style="margin-top: 10px;">
+        <button id="btnWord" class="btn-word" onclick="adjuntarAlWord()">📄 Adjuntar directamente al Informe Word</button>
+      </div>
+
       <script>
         const canvas = document.getElementById("canvasSitras");
         const ctx = canvas.getContext("2d");
         const instruc = document.getElementById("instrucciones");
-        const btnDescargar = document.getElementById("btnDescargar");
+        const btnWord = document.getElementById("btnWord");
 
         const bgImg = new Image();
         bgImg.src = "data:image/jpeg;base64,{img_b64}";
@@ -82,26 +84,22 @@ def modal_editor_sitras(pdf_bytes):
           ctx.drawImage(bgImg, 0, 0);
 
           anotaciones.forEach(a => {{
-            // Recuadro rojo principal
             ctx.strokeStyle = "red";
             ctx.lineWidth = 3;
             ctx.strokeRect(a.rect.x, a.rect.y, a.rect.w, a.rect.h);
 
-            // Fondo blanco del texto con borde rojo
             ctx.fillStyle = "white";
             ctx.fillRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
             ctx.strokeStyle = "red";
             ctx.lineWidth = 2;
             ctx.strokeRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
 
-            // Texto perfectamente centrado
             ctx.fillStyle = "red";
             ctx.font = "bold 14px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(a.texto, a.textBox.x + (a.textBox.w / 2), a.textBox.y + (a.textBox.h / 2));
 
-            // Flecha indicadora
             ctx.beginPath();
             ctx.moveTo(a.arrow.fromX, a.arrow.fromY);
             ctx.lineTo(a.arrow.toX, a.arrow.toY);
@@ -117,7 +115,6 @@ def modal_editor_sitras(pdf_bytes):
             ctx.fill();
           }});
 
-          // Recuadro dinámico mientras se dibuja
           if (currentRect) {{
             ctx.strokeStyle = "red";
             ctx.lineWidth = 3;
@@ -135,7 +132,6 @@ def modal_editor_sitras(pdf_bytes):
           }};
         }}
 
-        // CLIC DERECHO PARA DESHACER (PASO ATRÁS)
         window.oncontextmenu = (e) => {{
           e.preventDefault();
           deshacer();
@@ -143,23 +139,21 @@ def modal_editor_sitras(pdf_bytes):
 
         function deshacer() {{
           if (modo === "CLICK_POS") {{
-            // Cancela el recuadro actual y vuelve a pedirlo
             currentRect = null;
             modo = "RECT";
             instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
           }} else if (anotaciones.length > 0) {{
-            // Elimina la última anotación completada
             anotaciones.pop();
             paso--;
             modo = "RECT";
-            btnDescargar.style.display = "none";
+            btnWord.style.display = "none";
             instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
           }}
           redraw();
         }}
 
         canvas.onmousedown = (e) => {{
-          if (e.button === 2) return; // Ignora clic derecho aquí
+          if (e.button === 2) return;
           if (paso >= 3) return;
           const pos = getMousePos(e);
 
@@ -172,7 +166,6 @@ def modal_editor_sitras(pdf_bytes):
             const clickArriba = pos.y < (currentRect.y + currentRect.h / 2);
             const centroX = currentRect.x + currentRect.w / 2;
             
-            // Medición con márgenes holgados para evitar desbordes
             ctx.font = "bold 14px Arial";
             const textWidth = ctx.measureText(eventos[paso]).width + 30;
             const textHeight = 28;
@@ -196,8 +189,8 @@ def modal_editor_sitras(pdf_bytes):
               modo = "RECT";
               instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
             }} else {{
-              instruc.innerText = "✅ ¡Listo! Puedes descargar la imagen con los 3 eventos.";
-              btnDescargar.style.display = "inline-block";
+              instruc.innerText = "✅ ¡Listo! Presiona el botón azul para colocar la imagen en el Word.";
+              btnWord.style.display = "inline-block";
             }}
             redraw();
           }}
@@ -220,7 +213,7 @@ def modal_editor_sitras(pdf_bytes):
           isDrawing = false;
           if (currentRect && currentRect.w > 15 && currentRect.h > 8) {{
             modo = "CLICK_POS";
-            instruc.innerText = `Haz un clic ARRIBA o ABAJO del recuadro para posicionar "${{eventos[paso]}}". (Clic derecho para cancelar recuadro)`;
+            instruc.innerText = `Haz un clic ARRIBA o ABAJO del recuadro para posicionar "${{eventos[paso]}}".`;
           }} else {{
             currentRect = null;
             redraw();
@@ -232,22 +225,28 @@ def modal_editor_sitras(pdf_bytes):
           modo = "RECT";
           currentRect = null;
           anotaciones = [];
-          btnDescargar.style.display = "none";
+          btnWord.style.display = "none";
           instruc.innerText = `Paso 1: Arrastra el mouse para encuadrar "${{eventos[0]}}"`;
           redraw();
         }}
 
-        function descargarImagen() {{
-          const link = document.createElement("a");
-          link.download = "Anexo_Sitras_Marcado.jpg";
-          link.href = canvas.toDataURL("image/jpeg", 0.95);
-          link.click();
+        function adjuntarAlWord() {{
+          const b64Data = canvas.toDataURL("image/jpeg", 0.95);
+          // Enviamos los datos directamente a Streamlit vía query param en memoria
+          const parentUrl = new URL(window.parent.location.href);
+          sessionStorage.setItem("sitras_img_b64", b64Data);
+          
+          // Notificar visualmente y cerrar
+          alert("✅ Imagen enviada correctamente al informe Word. Cierra esta ventana.");
+          window.parent.postMessage({{ type: "streamlit:setComponentValue", value: b64Data }}, "*");
         }}
       </script>
     </body>
     </html>
     """
-    components.html(editor_html, height=620, scrolling=False)
+    components.html(editor_html, height=640, scrolling=False)
+
+
 # =========================================================
 # 1. CATÁLOGO COMPLETO DE ALIMENTADORES Y ZONAS
 # =========================================================
@@ -415,8 +414,18 @@ with col_preview:
     if plantilla_doc is not None:
         try:
             doc = DocxTemplate(plantilla_doc)
+            
+            # 1. Inyección de la imagen del anexo si existe en memoria
+            if "imagen_anexo_sitras" in st.session_state and st.session_state.imagen_anexo_sitras:
+                img_bytes = base64.b64decode(st.session_state.imagen_anexo_sitras.split(",")[1])
+                img_stream = io.BytesIO(img_bytes)
+                context["anexo_sitras"] = InlineImage(doc, img_stream, width=Mm(165))
+            else:
+                context["anexo_sitras"] = "" # Espacio vacío si no se editó
+
             doc.render(context)
             
+            # 2. Inyección de la tabla de cronología (HORA)
             tabla_cronologia = None
             for table in doc.docx.tables:
                 if len(table.rows) > 0 and "HORA" in table.rows[0].cells[0].text.upper():
