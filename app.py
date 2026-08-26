@@ -418,7 +418,8 @@ with col_form:
         st_zn = c_st3.text_input("ST Zona:", value="1404245")
         corriente_val = st.text_input("Corriente registrada (A):", value="2450")
 
-with st.expander("3. Datos de Operación"):
+
+    with st.expander("3. Datos de Operación"):
         c_op1, c_op2 = st.columns(2)
         
         # 1. Fecha y Cálculo Automático del Día
@@ -443,7 +444,7 @@ with st.expander("3. Datos de Operación"):
         # 3. Horario Operación ahora es un menú desplegable
         operacion_val = c_op5.selectbox("Horario Operación:", ["Hora pico", "Hora valle"])
         zona_manual = c_op6.text_input("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
-
+	
     with st.expander("4. Cronología y Horas (HH:MM:SS)", expanded=True):
         st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word.")
         h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value="21:15:02")
