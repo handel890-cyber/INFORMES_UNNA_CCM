@@ -1,6 +1,5 @@
 import streamlit as st
-from docxtpl import DocxTemplate, InlineImage
-from docx.shared import Mm
+from docxtpl import DocxTemplate
 import streamlit.components.v1 as components
 import io
 import base64
@@ -9,96 +8,242 @@ from datetime import datetime
 import fitz  # PyMuPDF
 from PIL import Image, ImageDraw, ImageFont
 from streamlit_image_coordinates import streamlit_image_coordinates
+from docxtpl import DocxTemplate, InlineImage
+from docx.shared import Mm
 
 st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM")
 
-# Inicialización de estado para la imagen del anexo
-if "anexo_sitras_bytes" not in st.session_state:
-    st.session_state.anexo_sitras_bytes = None
-
 # =========================================================
-# MODAL CON RENDERIZADO DIRECTO A MEMORIA (PYTHON/PIL)
+# MODAL CON ENVÍO DIRECTO A WORD (SIN DESCARGAS)
+# =========================================================
+# =========================================================
+# MODAL CON RENDERIZADO VISUAL Y ASIGNACIÓN DIRECTA
 # =========================================================
 @st.dialog("✏️ Editor Visual Sitras PRO", width="large")
 def modal_editor_sitras(pdf_bytes):
     doc_pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
     page = doc_pdf.load_page(0)
-    pix = page.get_pixmap(dpi=110)
-    img_pil = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+    pix = page.get_pixmap(dpi=130)
+    img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
+    w, h = pix.width, pix.height
 
-    if "clicks_modal" not in st.session_state:
-        st.session_state.clicks_modal = []
+    editor_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body {{ margin: 0; font-family: sans-serif; background-color: #262730; color: #fff; text-align: center; }}
+        #toolbar {{ padding: 8px; background: #1e1e24; display: flex; justify-content: center; gap: 10px; align-items: center; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }}
+        #instrucciones {{ font-weight: bold; color: #ff4b4b; }}
+        #canvas-wrapper {{ position: relative; display: inline-block; max-height: 480px; overflow-y: auto; border: 2px solid #555; border-radius: 4px; }}
+        canvas {{ display: block; cursor: crosshair; }}
+        button {{ padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }}
+        .btn-undo {{ background-color: #f39c12; color: white; }}
+        .btn-reset {{ background-color: #555; color: white; }}
+        .btn-word {{ background-color: #0078d4; color: white; display: none; font-size: 14px; padding: 8px 16px; }}
+      </style>
+    </head>
+    <body>
+      <div id="toolbar">
+        <span id="instrucciones">Paso 1: Arrastra el mouse para encuadrar "Función de disparo".</span>
+        <button class="btn-undo" onclick="deshacer()">↩ Deshacer (Clic Derecho)</button>
+        <button class="btn-reset" onclick="resetCanvas()">🔄 Reiniciar</button>
+      </div>
 
-    c_info, c_btn = st.columns([3, 1])
-    c_info.info("🖱️ Haz clic en el centro de las 3 filas: Disparo, Apertura y Recierre.")
-    if c_btn.button("🔄 Reiniciar Clics"):
-        st.session_state.clicks_modal = []
-        st.rerun()
+      <div id="canvas-wrapper">
+        <canvas id="canvasSitras" width="{w}" height="{h}"></canvas>
+      </div>
 
-    st.caption(f"Filas seleccionadas: {len(st.session_state.clicks_modal)} / 3")
+      <div style="margin-top: 10px;">
+        <button id="btnWord" class="btn-word" onclick="guardarImagen()">📄 Guardar Imagen Anexo</button>
+      </div>
 
-    if len(st.session_state.clicks_modal) < 3:
-        value = streamlit_image_coordinates(img_pil, key="sitras_coords")
-        if value is not None:
-            pt = (value["x"], value["y"])
-            if not st.session_state.clicks_modal or st.session_state.clicks_modal[-1] != pt:
-                st.session_state.clicks_modal.append(pt)
-                st.rerun()
+      <script>
+        const canvas = document.getElementById("canvasSitras");
+        const ctx = canvas.getContext("2d");
+        const instruc = document.getElementById("instrucciones");
+        const btnWord = document.getElementById("btnWord");
 
-    if len(st.session_state.clicks_modal) == 3:
-        st.success("¡3 filas detectadas!")
-        clics_ordenados = sorted(st.session_state.clicks_modal, key=lambda p: p[1])
-        textos = [
-            "Re-cierre exitoso del interruptor",
-            "Apertura automática del interruptor",
-            "Función de disparo"
-        ]
+        const bgImg = new Image();
+        bgImg.src = "data:image/jpeg;base64,{img_b64}";
 
-        posiciones = []
-        c1, c2, c3 = st.columns(3)
-        with c1: posiciones.append(st.radio(f"1. {textos[0]}", ["Arriba", "Abajo"], key="m_p1"))
-        with c2: posiciones.append(st.radio(f"2. {textos[1]}", ["Arriba", "Abajo"], key="m_p2"))
-        with c3: posiciones.append(st.radio(f"3. {textos[2]}", ["Arriba", "Abajo"], key="m_p3"))
+        const eventos = [
+          "Función de disparo",
+          "Apertura automática del interruptor",
+          "Re-cierre exitoso del interruptor"
+        ];
 
-        if st.button("💾 Adjuntar directamente al Informe Word", use_container_width=True, type="primary"):
-            img_final = img_pil.copy()
-            draw = ImageDraw.Draw(img_final)
+        let paso = 0; 
+        let modo = "RECT"; 
+        let isDrawing = false;
+        let startX = 0, startY = 0;
+        let currentRect = null;
+        let anotaciones = []; 
 
-            try:
-                font = ImageFont.truetype("arial.ttf", 15)
-            except IOError:
-                font = ImageFont.load_default()
+        bgImg.onload = () => redraw();
 
-            for i, (cx, cy) in enumerate(clics_ordenados):
-                top = cy - 11
-                bottom = cy + 11
-                left = 8
-                right = img_final.width - 8
-                flecha_x = img_final.width - 220
-                texto = textos[i]
+        function redraw() {{
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(bgImg, 0, 0);
 
-                # Recuadro rojo
-                draw.rectangle([left, top, right, bottom], outline="red", width=3)
+          anotaciones.forEach(a => {{
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(a.rect.x, a.rect.y, a.rect.w, a.rect.h);
 
-                # Flecha y etiqueta
-                if posiciones[i] == "Arriba":
-                    y_caja = top - 32
-                    draw.line([(flecha_x, y_caja + 20), (flecha_x, top)], fill="red", width=2)
-                    draw.polygon([(flecha_x, top), (flecha_x - 5, top - 7), (flecha_x + 5, top - 7)], fill="red")
-                    draw.rectangle([flecha_x - 120, y_caja, flecha_x + 130, y_caja + 22], fill="white", outline="red", width=2)
-                    draw.text((flecha_x - 115, y_caja + 3), texto, fill="red", font=font)
-                else:
-                    y_caja = bottom + 12
-                    draw.line([(flecha_x, y_caja), (flecha_x, bottom)], fill="red", width=2)
-                    draw.polygon([(flecha_x, bottom), (flecha_x - 5, bottom + 7), (flecha_x + 5, bottom + 7)], fill="red")
-                    draw.rectangle([flecha_x - 120, y_caja, flecha_x + 130, y_caja + 22], fill="white", outline="red", width=2)
-                    draw.text((flecha_x - 115, y_caja + 3), texto, fill="red", font=font)
+            ctx.fillStyle = "white";
+            ctx.fillRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
 
-            buf = io.BytesIO()
-            img_final.save(buf, format="PNG")
-            st.session_state.anexo_sitras_bytes = buf.getvalue()
-            st.success("✅ ¡Imagen cargada en memoria para el Word! Ya puedes cerrar esta ventana.")
-            st.rerun()
+            ctx.fillStyle = "red";
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(a.texto, a.textBox.x + (a.textBox.w / 2), a.textBox.y + (a.textBox.h / 2));
+
+            ctx.beginPath();
+            ctx.moveTo(a.arrow.fromX, a.arrow.fromY);
+            ctx.lineTo(a.arrow.toX, a.arrow.toY);
+            ctx.stroke();
+
+            const headlen = 9;
+            const angle = Math.atan2(a.arrow.toY - a.arrow.fromY, a.arrow.toX - a.arrow.fromX);
+            ctx.beginPath();
+            ctx.moveTo(a.arrow.toX, a.arrow.toY);
+            ctx.lineTo(a.arrow.toX - headlen * Math.cos(angle - Math.PI / 6), a.arrow.toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(a.arrow.toX - headlen * Math.cos(angle + Math.PI / 6), a.arrow.toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fillStyle = "red";
+            ctx.fill();
+          }});
+
+          if (currentRect) {{
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(currentRect.x, currentRect.y, currentRect.w, currentRect.h);
+          }}
+        }}
+
+        function getMousePos(evt) {{
+          const rect = canvas.getBoundingClientRect();
+          const scaleX = canvas.width / rect.width;
+          const scaleY = canvas.height / rect.height;
+          return {{
+            x: (evt.clientX - rect.left) * scaleX,
+            y: (evt.clientY - rect.top) * scaleY
+          }};
+        }}
+
+        window.oncontextmenu = (e) => {{
+          e.preventDefault();
+          deshacer();
+        }};
+
+        function deshacer() {{
+          if (modo === "CLICK_POS") {{
+            currentRect = null;
+            modo = "RECT";
+            instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
+          }} else if (anotaciones.length > 0) {{
+            anotaciones.pop();
+            paso--;
+            modo = "RECT";
+            btnWord.style.display = "none";
+            instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
+          }}
+          redraw();
+        }}
+
+        canvas.onmousedown = (e) => {{
+          if (e.button === 2) return;
+          if (paso >= 3) return;
+          const pos = getMousePos(e);
+
+          if (modo === "RECT") {{
+            isDrawing = true;
+            startX = pos.x;
+            startY = pos.y;
+            currentRect = {{ x: startX, y: startY, w: 0, h: 0 }};
+          }} else if (modo === "CLICK_POS") {{
+            const clickArriba = pos.y < (currentRect.y + currentRect.h / 2);
+            const centroX = currentRect.x + currentRect.w / 2;
+            
+            ctx.font = "bold 14px Arial";
+            const textWidth = ctx.measureText(eventos[paso]).width + 30;
+            const textHeight = 28;
+            
+            let tbX = centroX - textWidth / 2;
+            let tbY = clickArriba ? currentRect.y - 45 : currentRect.y + currentRect.h + 20;
+            let fromY = clickArriba ? tbY + textHeight : tbY;
+            let toY = clickArriba ? currentRect.y : currentRect.y + currentRect.h;
+
+            anotaciones.push({{
+              texto: eventos[paso],
+              rect: currentRect,
+              textBox: {{ x: tbX, y: tbY, w: textWidth, h: textHeight }},
+              arrow: {{ fromX: centroX, fromY: fromY, toX: centroX, toY: toY }}
+            }});
+
+            currentRect = null;
+            paso++;
+
+            if (paso < 3) {{
+              modo = "RECT";
+              instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
+            }} else {{
+              instruc.innerText = "✅ ¡Listo! Presiona el botón azul para generar el anexo.";
+              btnWord.style.display = "inline-block";
+            }}
+            redraw();
+          }}
+        }};
+
+        canvas.onmousemove = (e) => {{
+          if (!isDrawing) return;
+          const pos = getMousePos(e);
+          currentRect = {{
+            x: Math.min(startX, pos.x),
+            y: Math.min(startY, pos.y),
+            w: Math.abs(pos.x - startX),
+            h: Math.abs(pos.y - startY)
+          }};
+          redraw();
+        }};
+
+        canvas.onmouseup = () => {{
+          if (!isDrawing) return;
+          isDrawing = false;
+          if (currentRect && currentRect.w > 15 && currentRect.h > 8) {{
+            modo = "CLICK_POS";
+            instruc.innerText = `Haz un clic ARRIBA o ABAJO del recuadro para posicionar "${{eventos[paso]}}".`;
+          }} else {{
+            currentRect = null;
+            redraw();
+          }}
+        }};
+
+        function resetCanvas() {{
+          paso = 0;
+          modo = "RECT";
+          currentRect = null;
+          anotaciones = [];
+          btnWord.style.display = "none";
+          instruc.innerText = `Paso 1: Arrastra el mouse para encuadrar "${{eventos[0]}}"`;
+          redraw();
+        }}
+
+        function guardarImagen() {{
+          const link = document.createElement("a");
+          link.download = "Anexo_Sitras_Editado.jpg";
+          link.href = canvas.toDataURL("image/jpeg", 0.95);
+          link.click();
+        }}
+      </script>
+    </body>
+    </html>
+    """
+    components.html(editor_html, height=580, scrolling=False)
 
 # =========================================================
 # 1. CATÁLOGO COMPLETO DE ALIMENTADORES Y ZONAS
@@ -140,7 +285,7 @@ CATALOGO_ALIMENTADORES = {
     "SER22_JAR - AL4 (154-4)": {"interruptor": "154-4 SER22_JAR", "alimentador_ser": "AL4-154 SER22_JAR", "ser": "SER22_JAR", "alimentador": "AL4", "interruptor_num": "154-4", "zona":"220"},
     "SER25_SMA - AL1 (154-1)": {"interruptor": "154-1 SER25_SMA", "alimentador_ser": "AL1-154 SER25_SMA", "ser": "SER25_SMA", "alimentador": "AL1", "interruptor_num": "154-1", "zona":"219"},
     "SER25_SMA - AL2 (154-2)": {"interruptor": "154-2 SER25_SMA", "alimentador_ser": "AL2-154 SER25_SMA", "ser": "SER25_SMA", "alimentador": "AL2", "interruptor_num": "154-2", "zona":"220"},
-    "SER25_SMA - AL3 (154-3)": {"interruptor": "154-3 SER25_SMA", "alimentador_ser": "AL3-154 SER25_SMA", "ser": "SER25_SMA", "alimentador": "AL3", "interruptor_num": "154-3", "zona":"221-223"},
+    "SER25_SMA - AL3 (154-1)": {"interruptor": "154-3 SER25_SMA", "alimentador_ser": "AL3-154 SER25_SMA", "ser": "SER25_SMA", "alimentador": "AL3", "interruptor_num": "154-3", "zona":"221-223"},
     "SER25_SMA - AL4 (154-4)": {"interruptor": "154-4 SER25_SMA", "alimentador_ser": "AL4-154 SER25_SMA", "ser": "SER25_SMA", "alimentador": "AL4", "interruptor_num": "154-4", "zona":"222-224"},
     "SER27_BAY - AL1 (154-1)": {"interruptor": "154-1 SER27_BAY", "alimentador_ser": "AL1-154 SER27_BAY", "ser": "SER27_BAY", "alimentador": "AL1", "interruptor_num": "154-1", "zona":"221-223"},
     "SER27_BAY - AL2 (154-2)": {"interruptor": "154-2 SER27_BAY", "alimentador_ser": "AL2-154 SER27_BAY", "ser": "SER27_BAY", "alimentador": "AL2", "interruptor_num": "154-2", "zona":"222-224"}
@@ -155,6 +300,7 @@ with col_form:
 
     plantilla_path = "plantilla_base.docx"
     plantilla_doc = None
+    
     if os.path.exists(plantilla_path):
         plantilla_doc = plantilla_path
     else:
@@ -168,7 +314,10 @@ with col_form:
         datos_ap = CATALOGO_ALIMENTADORES[sel_aperturado]
         zona_detectada = datos_ap["zona"]
 
-        opciones_vecino_filtradas = [k for k, v in CATALOGO_ALIMENTADORES.items() if v["zona"] == zona_detectada and k != sel_aperturado]
+        opciones_vecino_filtradas = [
+            k for k, v in CATALOGO_ALIMENTADORES.items() 
+            if v["zona"] == zona_detectada and k != sel_aperturado
+        ]
         if not opciones_vecino_filtradas:
             opciones_vecino_filtradas = [k for k in CATALOGO_ALIMENTADORES.keys() if k != sel_aperturado]
 
@@ -199,7 +348,7 @@ with col_form:
         c_op5, c_op6 = st.columns(2)
         operacion_val = c_op5.selectbox("Horario Operación:", ["Hora pico", "Hora valle"])
         zona_manual = c_op6.text_input("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
-
+    
     with st.expander("4. Cronología y Horas (HH:MM:SS)"):
         st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word.")
         h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value="21:15:02")
@@ -217,16 +366,23 @@ with col_form:
         per_sub_val = st.text_input("Personal Subestaciones:", value="Carlos Morales")
         per_cat_val = st.text_input("Personal Catenarias:", value="Luis Vargas")
 
+ 
+
+# =========================================================
+    # SECCIÓN 6: DENTRO DE COL_FORM
+    # =========================================================
     with st.expander("6. Anexos y Gráficos", expanded=True):
-        st.write("Sube el PDF para abrir el editor visual.")
+        st.write("Sube el PDF para abrir el editor visual en tiempo real.")
         pdf_file = st.file_uploader("Log Sitras PRO (.pdf)", type=["pdf"])
+        
         if pdf_file is not None:
             if st.button("🚀 Abrir Editor de Sitras PRO", use_container_width=True):
-                st.session_state.clicks_modal = []
                 modal_editor_sitras(pdf_file.getvalue())
 
-        if st.session_state.anexo_sitras_bytes is not None:
-            st.success("✅ Imagen del anexo cargada en memoria y vinculada al Word.")
+        anexo_cargado = st.file_uploader("Cargar Imagen Anexo Procesada (.jpg / .png):", type=["jpg", "png", "jpeg"])
+        if anexo_cargado is not None:
+            st.session_state["anexo_sitras_file"] = anexo_cargado
+            st.success("✅ Imagen lista para insertarse en el Word.")
 
 # =========================================================
 # CONSTRUCCIÓN Y AUTO-ORDENAMIENTO DE EVENTOS
@@ -263,30 +419,29 @@ with col_preview:
     if plantilla_doc is not None:
         try:
             doc = DocxTemplate(plantilla_doc)
-
-            # Inyección de imagen directa desde la memoria
-            if st.session_state.anexo_sitras_bytes is not None:
-                img_stream = io.BytesIO(st.session_state.anexo_sitras_bytes)
-                context["anexo_sitras"] = InlineImage(doc, img_stream, width=Mm(165))
+            
+            # 1. Inyección de la imagen del anexo
+            if "anexo_sitras_file" in st.session_state and st.session_state["anexo_sitras_file"] is not None:
+                context["anexo_sitras"] = InlineImage(doc, st.session_state["anexo_sitras_file"], width=Mm(165))
             else:
                 context["anexo_sitras"] = ""
 
             doc.render(context)
-
-            # Inyección de la tabla de cronología (HORA)
+            
+            # 2. Inyección de la tabla de cronología (HORA)
             tabla_cronologia = None
             for table in doc.docx.tables:
                 if len(table.rows) > 0 and "HORA" in table.rows[0].cells[0].text.upper():
                     tabla_cronologia = table
                     break
-
+            
             if tabla_cronologia is not None:
                 for evento in cronologia_ordenada:
                     fila = tabla_cronologia.add_row()
                     fila.cells[0].text = str(evento["hora"])
                     fila.cells[1].text = str(evento["ubicacion"])
                     fila.cells[2].text = str(evento["descripcion"])
-
+            
             buffer = io.BytesIO()
             doc.save(buffer)
             buffer.seek(0)
