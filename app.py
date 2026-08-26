@@ -461,79 +461,232 @@ with col_form:
         sup_pco_val = st.text_input("Supervisor PCO:", value="Jesús Salguedo")
         per_sub_val = st.text_input("Personal Subestaciones:", value="Carlos Morales")
         per_cat_val = st.text_input("Personal Catenarias:", value="Luis Vargas")
+
 import fitz  # PyMuPDF
 from PIL import Image, ImageDraw, ImageFont
-from streamlit_image_coordinates import streamlit_image_coordinates
+from streamlit_drawable_canvas import st_canvas
+
+# =========================================================
+# FUNCIÓN DEL POP-UP (MODAL) PARA DIBUJAR
+# =========================================================
+@st.dialog("✏️ Editor de Eventos Sitras PRO", width="large")
+def modal_editor_sitras(pdf_bytes):
+    # 1. Convertir PDF a imagen
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    page = doc.load_page(0)
+    pix = page.get_pixmap(dpi=90) 
+    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+    
+    st.info("🖌️ **Modo dibujo activado:** Haz clic y arrastra para dibujar los 3 rectángulos.")
+    
+    # 2. Lienzo interactivo
+    canvas_result = st_canvas(
+        fill_color="rgba(255, 0, 0, 0)",
+        stroke_width=2,
+        stroke_color="red",
+        background_image=img,
+        update_streamlit=True,
+        height=img.height,
+        width=img.width,
+        drawing_mode="rect",
+        key="canvas_modal",
+    )
+    
+    # 3. Procesamiento al detectar los 3 rectángulos
+    if canvas_result.json_data is not None:
+        objetos = canvas_result.json_data["objects"]
+        st.caption(f"Recuadros dibujados: {len(objetos)} / 3")
+        
+        if len(objetos) == 3:
+            st.success("¡3 recuadros detectados! Configura la posición de los textos.")
+            
+            objetos_ordenados = sorted(objetos, key=lambda x: x['top'])
+            textos = ["Re-cierre exitoso del interruptor", "Apertura automática del interruptor", "Función de disparo"]
+            
+            posiciones = []
+            c1, c2, c3 = st.columns(3)
+            with c1: posiciones.append(st.radio(f"1. {textos[0]}", ["Arriba", "Abajo"], key="p1"))
+            with c2: posiciones.append(st.radio(f"2. {textos[1]}", ["Arriba", "Abajo"], key="p2"))
+            with c3: posiciones.append(st.radio(f"3. {textos[2]}", ["Arriba", "Abajo"], key="p3"))
+
+            if st.button("🖼️ Generar Imagen Final", use_container_width=True):
+                img_final = img.copy()
+                draw = ImageDraw.Draw(img_final)
+                try:
+                    font = ImageFont.truetype("arial.ttf", 14)
+                except IOError:
+                    font = ImageFont.load_default()
+
+                for i, obj in enumerate(objetos_ordenados):
+                    left = obj['left'] * obj['scaleX']
+                    top = obj['top'] * obj['scaleY']
+                    width = obj['width'] * obj['scaleX']
+                    height = obj['height'] * obj['scaleY']
+                    right = left + width
+                    bottom = top + height
+                    centro_x = left + (width / 2)
+                    
+                    texto = textos[i]
+                    draw.rectangle([left, top, right, bottom], outline="red", width=2)
+                    
+                    if posiciones[i] == "Arriba":
+                        y_caja = top - 35
+                        draw.line([(centro_x, y_caja + 20), (centro_x, top)], fill="red", width=2)
+                        draw.polygon([(centro_x, top), (centro_x - 5, top - 7), (centro_x + 5, top - 7)], fill="red")
+                        draw.rectangle([centro_x + 10, y_caja, centro_x + 240, y_caja + 20], fill="white", outline="red")
+                        draw.text((centro_x + 15, y_caja + 2), texto, fill="red", font=font)
+                    else:
+                        y_caja = bottom + 15
+                        draw.line([(centro_x, y_caja), (centro_x, bottom)], fill="red", width=2)
+                        draw.polygon([(centro_x, bottom), (centro_x - 5, bottom + 7), (centro_x + 5, bottom + 7)], fill="red")
+                        draw.rectangle([centro_x + 10, y_caja, centro_x + 240, y_caja + 20], fill="white", outline="red")
+                        draw.text((centro_x + 15, y_caja + 2), texto, fill="red", font=font)
+
+                st.image(img_final, use_container_width=True)
+                
+                # Descarga directa desde el pop-up
+                buf = io.BytesIO()
+                img_final.save(buf, format="PNG")
+                st.download_button(
+                    label="📥 Descargar Anexo Marcado",
+                    data=buf.getvalue(),
+                    file_name="Anexo_Marcado.png",
+                    mime="image/png",
+                    type="primary",
+                    use_container_width=True
+                )
+
+
+# (Tu código de catálogo y columnas inicia aquí...)
+col_form, col_preview = st.columns([1, 1], gap="medium")
 
 # =========================================================
 # 6. ANEXOS: MARCADO DE LOG SITRAS PRO (3 CLICS OPTIMIZADO)
 # =========================================================
 with col_form:
     with st.expander("6. Anexos: Marcado de Eventos en PDF", expanded=True):
-        st.write("Sube el log de Sitras PRO (PDF) y haz clic en las 3 filas correspondientes.")
+        st.write("Sube el log de Sitras PRO (PDF). **Dibuja 3 recuadros** arrastrando el mouse sobre las filas correspondientes.")
         
         pdf_file = st.file_uploader("Subir Log Sitras PRO (.pdf)", type=["pdf"])
-        
-        if "clicks_sitras" not in st.session_state:
-            st.session_state.clicks_sitras = []
-            
-        col_btn1, col_btn2 = st.columns(2)
-        if col_btn1.button("🔄 Reiniciar Clics"):
-            st.session_state.clicks_sitras = []
-            st.rerun()
 
         if pdf_file is not None:
-            # Optimizamos convirtiendo a menor DPI (90 en vez de 150) para que cargue instantáneo
+            # 1. Convertir PDF a imagen
             doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
             page = doc.load_page(0)
             pix = page.get_pixmap(dpi=90) 
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
             
-            st.caption(f"Clics registrados: {len(st.session_state.clicks_sitras)} / 3")
+            st.info("🖌️ **Modo dibujo activado:** Haz clic y arrastra para dibujar los rectángulos.")
             
-            if len(st.session_state.clicks_sitras) < 3:
-                value = streamlit_image_coordinates(img, key="sitras_log")
-                if value is not None:
-                    punto = (value["x"], value["y"])
-                    if not st.session_state.clicks_sitras or st.session_state.clicks_sitras[-1] != punto:
-                        st.session_state.clicks_sitras.append(punto)
-                        st.rerun()
+            # 2. Lienzo interactivo para dibujar
+            canvas_result = st_canvas(
+                fill_color="rgba(255, 0, 0, 0)",  # Relleno transparente
+                stroke_width=2,                   # Grosor del borde
+                stroke_color="red",               # Color del borde
+                background_image=img,
+                update_streamlit=True,
+                height=img.height,
+                width=img.width,
+                drawing_mode="rect",              # Modo rectángulo
+                key="canvas",
+            )
             
-            if len(st.session_state.clicks_sitras) == 3:
-                st.success("¡3 filas seleccionadas!")
-                clics_ordenados = sorted(st.session_state.clicks_sitras, key=lambda p: p[1])
-                textos = [
-                    "Re-cierre exitoso del interruptor",
-                    "Apertura automática del interruptor",
-                    "Función de disparo"
-                ]
+            # 3. Procesar los dibujos si existen
+            if canvas_result.json_data is not None:
+                objetos_dibujados = canvas_result.json_data["objects"]
                 
-                img_marcada = img.copy()
-                draw = ImageDraw.Draw(img_marcada)
-                try:
-                    font = ImageFont.truetype("arial.ttf", 14)
-                except IOError:
-                    font = ImageFont.load_default()
+                st.caption(f"Recuadros dibujados: {len(objetos_dibujados)} / 3")
+                
+                # Cuando el usuario dibuja exactamente 3 rectángulos
+                if len(objetos_dibujados) == 3:
+                    st.success("¡3 recuadros detectados! Configura la posición de los textos.")
+                    
+                    # Ordenar los rectángulos de arriba hacia abajo (coordenada Y)
+                    objetos_ordenados = sorted(objetos_dibujados, key=lambda x: x['top'])
+                    
+                    textos_eventos = [
+                        "Re-cierre exitoso del interruptor",
+                        "Apertura automática del interruptor",
+                        "Función de disparo"
+                    ]
+                    
+                    # Interfaz para elegir dónde va el texto (Arriba o Abajo)
+                    posiciones = []
+                    col_pos1, col_pos2, col_pos3 = st.columns(3)
+                    
+                    with col_pos1:
+                        pos1 = st.radio(f"1. {textos_eventos[0]}", ["Arriba", "Abajo"], key="pos1")
+                        posiciones.append(pos1)
+                    with col_pos2:
+                        pos2 = st.radio(f"2. {textos_eventos[1]}", ["Arriba", "Abajo"], key="pos2")
+                        posiciones.append(pos2)
+                    with col_pos3:
+                        pos3 = st.radio(f"3. {textos_eventos[2]}", ["Arriba", "Abajo"], key="pos3")
+                        posiciones.append(pos3)
 
-                for i, (x, y) in enumerate(clics_ordenados):
-                    y_top, y_bottom = y - 10, y + 10
-                    draw.rectangle([10, y_top, img.width - 10, y_bottom], outline="red", width=2)
-                    texto = textos[i]
-                    x_texto, y_texto = img.width - 240, y_top - 18
-                    draw.rectangle([x_texto - 4, y_texto - 4, img.width - 10, y_top - 2], fill="white", outline="red")
-                    draw.text((x_texto, y_texto), texto, fill="red", font=font)
-                
-                # CORRECCIÓN: Se cambió use_column_width por use_container_width
-                st.image(img_marcada, caption="Log marcado con eventos", use_container_width=True)
-                
-                buf = io.BytesIO()
-                img_marcada.save(buf, format="PNG")
-                st.download_button(
-                    label="📥 Descargar Imagen Anexo (.png)",
-                    data=buf.getvalue(),
-                    file_name="Anexo_Sitras_Marcado.png",
-                    mime="image/png"
-                )
+                    # Botón para consolidar el dibujo con flechas y textos
+                    if st.button("🖼️ Procesar Imagen Final con Textos y Flechas"):
+                        img_final = img.copy()
+                        draw = ImageDraw.Draw(img_final)
+                        try:
+                            font = ImageFont.truetype("arial.ttf", 14)
+                        except IOError:
+                            font = ImageFont.load_default()
+
+                        # Dibujar sobre la imagen final
+                        for i, obj in enumerate(objetos_ordenados):
+                            # Extraer coordenadas del dibujo (el canvas usa escalas)
+                            left = obj['left'] * obj['scaleX']
+                            top = obj['top'] * obj['scaleY']
+                            width = obj['width'] * obj['scaleX']
+                            height = obj['height'] * obj['scaleY']
+                            right = left + width
+                            bottom = top + height
+                            centro_x = left + (width / 2)
+                            
+                            texto = textos_eventos[i]
+                            
+                            # Re-dibujar el rectángulo rojo
+                            draw.rectangle([left, top, right, bottom], outline="red", width=2)
+                            
+                            # Lógica para dibujar Flecha y Texto según la elección
+                            if posiciones[i] == "Arriba":
+                                y_texto_caja = top - 35
+                                y_flecha_fin = top
+                                
+                                # Dibujar línea (tallo de flecha)
+                                draw.line([(centro_x, y_texto_caja + 20), (centro_x, y_flecha_fin)], fill="red", width=2)
+                                # Dibujar cabeza de flecha apuntando hacia ABAJO
+                                draw.polygon([(centro_x, y_flecha_fin), (centro_x - 5, y_flecha_fin - 7), (centro_x + 5, y_flecha_fin - 7)], fill="red")
+                                
+                                # Caja blanca y texto
+                                draw.rectangle([centro_x + 10, y_texto_caja, centro_x + 240, y_texto_caja + 20], fill="white", outline="red")
+                                draw.text((centro_x + 15, y_texto_caja + 2), texto, fill="red", font=font)
+                                
+                            else: # Si eligió "Abajo"
+                                y_texto_caja = bottom + 15
+                                y_flecha_fin = bottom
+                                
+                                # Dibujar línea (tallo de flecha)
+                                draw.line([(centro_x, y_texto_caja), (centro_x, y_flecha_fin)], fill="red", width=2)
+                                # Dibujar cabeza de flecha apuntando hacia ARRIBA
+                                draw.polygon([(centro_x, y_flecha_fin), (centro_x - 5, y_flecha_fin + 7), (centro_x + 5, y_flecha_fin + 7)], fill="red")
+                                
+                                # Caja blanca y texto
+                                draw.rectangle([centro_x + 10, y_texto_caja, centro_x + 240, y_texto_caja + 20], fill="white", outline="red")
+                                draw.text((centro_x + 15, y_texto_caja + 2), texto, fill="red", font=font)
+
+                        # Mostrar resultado final
+                        st.image(img_final, caption="Log procesado con flechas", use_container_width=True)
+                        
+                        buf = io.BytesIO()
+                        img_final.save(buf, format="PNG")
+                        st.download_button(
+                            label="📥 Descargar Imagen Lista (.png)",
+                            data=buf.getvalue(),
+                            file_name="Anexo_Sitras_Final.png",
+                            mime="image/png"
+                        )
 # =========================================================
 # CONSTRUCCIÓN Y AUTO-ORDENAMIENTO DE EVENTOS
 # =========================================================
