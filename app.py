@@ -336,7 +336,7 @@ with col_form:
     # =========================================================
     # SECCIÓN 6: CONTROL PERSISTENTE DEL MODAL
     # =========================================================
-	with st.expander("6. Anexos y Gráficos", expanded=True):
+with st.expander("6. Anexos y Gráficos", expanded=True):
         st.write("Sube el PDF para abrir el editor en tiempo real.")
         pdf_file = st.file_uploader("Log Sitras PRO (.pdf)", type=["pdf"])
         
