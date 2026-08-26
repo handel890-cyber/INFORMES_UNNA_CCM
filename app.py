@@ -19,232 +19,88 @@ st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM"
 # =========================================================
 # MODAL CON RENDERIZADO VISUAL Y ASIGNACIÓN DIRECTA
 # =========================================================
+# =========================================================
+# MODAL CON ENVÍO DIRECTO EN MEMORIA A WORD (SIN SUBIR NADA EXTRA)
+# =========================================================
 @st.dialog("✏️ Editor Visual Sitras PRO", width="large")
 def modal_editor_sitras(pdf_bytes):
     doc_pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
     page = doc_pdf.load_page(0)
-    pix = page.get_pixmap(dpi=130)
-    img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
-    w, h = pix.width, pix.height
+    pix = page.get_pixmap(dpi=110)
+    img_pil = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
 
-    editor_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body {{ margin: 0; font-family: sans-serif; background-color: #262730; color: #fff; text-align: center; }}
-        #toolbar {{ padding: 8px; background: #1e1e24; display: flex; justify-content: center; gap: 10px; align-items: center; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }}
-        #instrucciones {{ font-weight: bold; color: #ff4b4b; }}
-        #canvas-wrapper {{ position: relative; display: inline-block; max-height: 480px; overflow-y: auto; border: 2px solid #555; border-radius: 4px; }}
-        canvas {{ display: block; cursor: crosshair; }}
-        button {{ padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }}
-        .btn-undo {{ background-color: #f39c12; color: white; }}
-        .btn-reset {{ background-color: #555; color: white; }}
-        .btn-word {{ background-color: #0078d4; color: white; display: none; font-size: 14px; padding: 8px 16px; }}
-      </style>
-    </head>
-    <body>
-      <div id="toolbar">
-        <span id="instrucciones">Paso 1: Arrastra el mouse para encuadrar "Función de disparo".</span>
-        <button class="btn-undo" onclick="deshacer()">↩ Deshacer (Clic Derecho)</button>
-        <button class="btn-reset" onclick="resetCanvas()">🔄 Reiniciar</button>
-      </div>
+    if "clicks_modal" not in st.session_state:
+        st.session_state.clicks_modal = []
 
-      <div id="canvas-wrapper">
-        <canvas id="canvasSitras" width="{w}" height="{h}"></canvas>
-      </div>
+    c_info, c_btn = st.columns([3, 1])
+    c_info.info("🖱️ Haz clic en las 3 filas: Disparo, Apertura y Recierre.")
+    if c_btn.button("🔄 Reiniciar Clics"):
+        st.session_state.clicks_modal = []
+        st.rerun()
 
-      <div style="margin-top: 10px;">
-        <button id="btnWord" class="btn-word" onclick="guardarImagen()">📄 Guardar Imagen Anexo</button>
-      </div>
+    st.caption(f"Filas seleccionadas: {len(st.session_state.clicks_modal)} / 3")
 
-      <script>
-        const canvas = document.getElementById("canvasSitras");
-        const ctx = canvas.getContext("2d");
-        const instruc = document.getElementById("instrucciones");
-        const btnWord = document.getElementById("btnWord");
+    if len(st.session_state.clicks_modal) < 3:
+        value = streamlit_image_coordinates(img_pil, key="sitras_coords")
+        if value is not None:
+            pt = (value["x"], value["y"])
+            if not st.session_state.clicks_modal or st.session_state.clicks_modal[-1] != pt:
+                st.session_state.clicks_modal.append(pt)
+                st.rerun()
 
-        const bgImg = new Image();
-        bgImg.src = "data:image/jpeg;base64,{img_b64}";
+    if len(st.session_state.clicks_modal) == 3:
+        st.success("¡3 filas seleccionadas!")
+        clics_ordenados = sorted(st.session_state.clicks_modal, key=lambda p: p[1])
+        textos = [
+            "Re-cierre exitoso del interruptor",
+            "Apertura automática del interruptor",
+            "Función de disparo"
+        ]
 
-        const eventos = [
-          "Función de disparo",
-          "Apertura automática del interruptor",
-          "Re-cierre exitoso del interruptor"
-        ];
+        posiciones = []
+        c1, c2, c3 = st.columns(3)
+        with c1: posiciones.append(st.radio(f"1. {textos[0]}", ["Arriba", "Abajo"], key="m_p1"))
+        with c2: posiciones.append(st.radio(f"2. {textos[1]}", ["Arriba", "Abajo"], key="m_p2"))
+        with c3: posiciones.append(st.radio(f"3. {textos[2]}", ["Arriba", "Abajo"], key="m_p3"))
 
-        let paso = 0; 
-        let modo = "RECT"; 
-        let isDrawing = false;
-        let startX = 0, startY = 0;
-        let currentRect = null;
-        let anotaciones = []; 
+        if st.button("📄 Guardar y Adjuntar a Word", use_container_width=True, type="primary"):
+            img_final = img_pil.copy()
+            draw = ImageDraw.Draw(img_final)
 
-        bgImg.onload = () => redraw();
+            try:
+                font = ImageFont.truetype("arial.ttf", 15)
+            except IOError:
+                font = ImageFont.load_default()
 
-        function redraw() {{
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(bgImg, 0, 0);
+            for i, (cx, cy) in enumerate(clics_ordenados):
+                top = cy - 11
+                bottom = cy + 11
+                left = 8
+                right = img_final.width - 8
+                flecha_x = img_final.width - 220
+                texto = textos[i]
 
-          anotaciones.forEach(a => {{
-            ctx.strokeStyle = "red";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(a.rect.x, a.rect.y, a.rect.w, a.rect.h);
+                # Recuadro rojo
+                draw.rectangle([left, top, right, bottom], outline="red", width=3)
 
-            ctx.fillStyle = "white";
-            ctx.fillRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
-            ctx.strokeStyle = "red";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
+                # Flecha y etiqueta
+                if posiciones[i] == "Arriba":
+                    y_caja = top - 32
+                    draw.line([(flecha_x, y_caja + 20), (flecha_x, top)], fill="red", width=2)
+                    draw.polygon([(flecha_x, top), (flecha_x - 5, top - 7), (flecha_x + 5, top - 7)], fill="red")
+                    draw.rectangle([flecha_x - 120, y_caja, flecha_x + 130, y_caja + 22], fill="white", outline="red", width=2)
+                    draw.text((flecha_x - 115, y_caja + 3), texto, fill="red", font=font)
+                else:
+                    y_caja = bottom + 12
+                    draw.line([(flecha_x, y_caja), (flecha_x, bottom)], fill="red", width=2)
+                    draw.polygon([(flecha_x, bottom), (flecha_x - 5, bottom + 7), (flecha_x + 5, bottom + 7)], fill="red")
+                    draw.rectangle([flecha_x - 120, y_caja, flecha_x + 130, y_caja + 22], fill="white", outline="red", width=2)
+                    draw.text((flecha_x - 115, y_caja + 3), texto, fill="red", font=font)
 
-            ctx.fillStyle = "red";
-            ctx.font = "bold 14px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(a.texto, a.textBox.x + (a.textBox.w / 2), a.textBox.y + (a.textBox.h / 2));
-
-            ctx.beginPath();
-            ctx.moveTo(a.arrow.fromX, a.arrow.fromY);
-            ctx.lineTo(a.arrow.toX, a.arrow.toY);
-            ctx.stroke();
-
-            const headlen = 9;
-            const angle = Math.atan2(a.arrow.toY - a.arrow.fromY, a.arrow.toX - a.arrow.fromX);
-            ctx.beginPath();
-            ctx.moveTo(a.arrow.toX, a.arrow.toY);
-            ctx.lineTo(a.arrow.toX - headlen * Math.cos(angle - Math.PI / 6), a.arrow.toY - headlen * Math.sin(angle - Math.PI / 6));
-            ctx.lineTo(a.arrow.toX - headlen * Math.cos(angle + Math.PI / 6), a.arrow.toY - headlen * Math.sin(angle + Math.PI / 6));
-            ctx.fillStyle = "red";
-            ctx.fill();
-          }});
-
-          if (currentRect) {{
-            ctx.strokeStyle = "red";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(currentRect.x, currentRect.y, currentRect.w, currentRect.h);
-          }}
-        }}
-
-        function getMousePos(evt) {{
-          const rect = canvas.getBoundingClientRect();
-          const scaleX = canvas.width / rect.width;
-          const scaleY = canvas.height / rect.height;
-          return {{
-            x: (evt.clientX - rect.left) * scaleX,
-            y: (evt.clientY - rect.top) * scaleY
-          }};
-        }}
-
-        window.oncontextmenu = (e) => {{
-          e.preventDefault();
-          deshacer();
-        }};
-
-        function deshacer() {{
-          if (modo === "CLICK_POS") {{
-            currentRect = null;
-            modo = "RECT";
-            instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
-          }} else if (anotaciones.length > 0) {{
-            anotaciones.pop();
-            paso--;
-            modo = "RECT";
-            btnWord.style.display = "none";
-            instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
-          }}
-          redraw();
-        }}
-
-        canvas.onmousedown = (e) => {{
-          if (e.button === 2) return;
-          if (paso >= 3) return;
-          const pos = getMousePos(e);
-
-          if (modo === "RECT") {{
-            isDrawing = true;
-            startX = pos.x;
-            startY = pos.y;
-            currentRect = {{ x: startX, y: startY, w: 0, h: 0 }};
-          }} else if (modo === "CLICK_POS") {{
-            const clickArriba = pos.y < (currentRect.y + currentRect.h / 2);
-            const centroX = currentRect.x + currentRect.w / 2;
-            
-            ctx.font = "bold 14px Arial";
-            const textWidth = ctx.measureText(eventos[paso]).width + 30;
-            const textHeight = 28;
-            
-            let tbX = centroX - textWidth / 2;
-            let tbY = clickArriba ? currentRect.y - 45 : currentRect.y + currentRect.h + 20;
-            let fromY = clickArriba ? tbY + textHeight : tbY;
-            let toY = clickArriba ? currentRect.y : currentRect.y + currentRect.h;
-
-            anotaciones.push({{
-              texto: eventos[paso],
-              rect: currentRect,
-              textBox: {{ x: tbX, y: tbY, w: textWidth, h: textHeight }},
-              arrow: {{ fromX: centroX, fromY: fromY, toX: centroX, toY: toY }}
-            }});
-
-            currentRect = null;
-            paso++;
-
-            if (paso < 3) {{
-              modo = "RECT";
-              instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
-            }} else {{
-              instruc.innerText = "✅ ¡Listo! Presiona el botón azul para generar el anexo.";
-              btnWord.style.display = "inline-block";
-            }}
-            redraw();
-          }}
-        }};
-
-        canvas.onmousemove = (e) => {{
-          if (!isDrawing) return;
-          const pos = getMousePos(e);
-          currentRect = {{
-            x: Math.min(startX, pos.x),
-            y: Math.min(startY, pos.y),
-            w: Math.abs(pos.x - startX),
-            h: Math.abs(pos.y - startY)
-          }};
-          redraw();
-        }};
-
-        canvas.onmouseup = () => {{
-          if (!isDrawing) return;
-          isDrawing = false;
-          if (currentRect && currentRect.w > 15 && currentRect.h > 8) {{
-            modo = "CLICK_POS";
-            instruc.innerText = `Haz un clic ARRIBA o ABAJO del recuadro para posicionar "${{eventos[paso]}}".`;
-          }} else {{
-            currentRect = null;
-            redraw();
-          }}
-        }};
-
-        function resetCanvas() {{
-          paso = 0;
-          modo = "RECT";
-          currentRect = null;
-          anotaciones = [];
-          btnWord.style.display = "none";
-          instruc.innerText = `Paso 1: Arrastra el mouse para encuadrar "${{eventos[0]}}"`;
-          redraw();
-        }}
-
-        function guardarImagen() {{
-          const link = document.createElement("a");
-          link.download = "Anexo_Sitras_Editado.jpg";
-          link.href = canvas.toDataURL("image/jpeg", 0.95);
-          link.click();
-        }}
-      </script>
-    </body>
-    </html>
-    """
-    components.html(editor_html, height=580, scrolling=False)
-
+            buf = io.BytesIO()
+            img_final.save(buf, format="PNG")
+            st.session_state["anexo_sitras_bytes"] = buf.getvalue()
+            st.rerun()
 # =========================================================
 # 1. CATÁLOGO COMPLETO DE ALIMENTADORES Y ZONAS
 # =========================================================
@@ -369,20 +225,19 @@ with col_form:
  
 
 # =========================================================
-    # SECCIÓN 6: DENTRO DE COL_FORM
+    # SECCIÓN 6: ANEXO DIRECTO DESDE EL PDF
     # =========================================================
     with st.expander("6. Anexos y Gráficos", expanded=True):
-        st.write("Sube el PDF para abrir el editor visual en tiempo real.")
+        st.write("Sube el PDF de Sitras PRO para marcar los eventos.")
         pdf_file = st.file_uploader("Log Sitras PRO (.pdf)", type=["pdf"])
         
         if pdf_file is not None:
             if st.button("🚀 Abrir Editor de Sitras PRO", use_container_width=True):
+                st.session_state.clicks_modal = []
                 modal_editor_sitras(pdf_file.getvalue())
 
-        anexo_cargado = st.file_uploader("Cargar Imagen Anexo Procesada (.jpg / .png):", type=["jpg", "png", "jpeg"])
-        if anexo_cargado is not None:
-            st.session_state["anexo_sitras_file"] = anexo_cargado
-            st.success("✅ Imagen lista para insertarse en el Word.")
+        if "anexo_sitras_bytes" in st.session_state and st.session_state["anexo_sitras_bytes"] is not None:
+            st.success("✅ Imagen del anexo procesada y vinculada al informe Word.")
 
 # =========================================================
 # CONSTRUCCIÓN Y AUTO-ORDENAMIENTO DE EVENTOS
@@ -420,9 +275,10 @@ with col_preview:
         try:
             doc = DocxTemplate(plantilla_doc)
             
-            # 1. Inyección de la imagen del anexo
-            if "anexo_sitras_file" in st.session_state and st.session_state["anexo_sitras_file"] is not None:
-                context["anexo_sitras"] = InlineImage(doc, st.session_state["anexo_sitras_file"], width=Mm(165))
+		# Inyección directa de la imagen generada en memoria
+            if "anexo_sitras_bytes" in st.session_state and st.session_state["anexo_sitras_bytes"] is not None:
+                img_stream = io.BytesIO(st.session_state["anexo_sitras_bytes"])
+                context["anexo_sitras"] = InlineImage(doc, img_stream, width=Mm(165))
             else:
                 context["anexo_sitras"] = ""
 
