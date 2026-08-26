@@ -443,7 +443,7 @@ with col_form:
         
         # 3. Horario Operación ahora es un menú desplegable
         operacion_val = c_op5.selectbox("Horario Operación:", ["Hora pico", "Hora valle"])
-        zona_manual = c_op6.text("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
+        zona_manual = c_op6.text_input("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
 	
     with st.expander("4. Cronología y Horas (HH:MM:SS)", expanded=True):
         st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word.")
