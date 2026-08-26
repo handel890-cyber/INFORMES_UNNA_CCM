@@ -410,8 +410,6 @@ with col_form:
     with st.expander("2. Funciones de Protección y ST"):
         f_disp_ini = st.text_input("Función SCADA Aperturado:", value="Disparo instantáneo Disparador di/dt")
         f_disp_fin = st.text_input("Función Relé Aperturado:", value="Disparo Imax")
-        f_disp_vec_ini = st.text_input("Función SCADA Vecino:", value="Disparo por S/E vecina")
-        f_disp_vec_fin = st.text_input("Función Relé Vecino:", value="Arrastre desde SSEE colateral activo")
         c_st1, c_st2, c_st3 = st.columns(3)
         st_ap = c_st1.text_input("ST Aperturado:", value="1404241")
         st_vec = c_st2.text_input("ST Vecino:", value="1404242")
