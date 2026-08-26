@@ -227,16 +227,25 @@ with col_form:
         per_cat_val = st.text_input("Personal Catenarias:", value="Luis Vargas")
 
     # =========================================================
-    # SECCIÓN 6: AHORA ESTÁ DENTRO DE COL_FORM CORRECTAMENTE
+    # SECCIÓN 6: CONTROL PERSISTENTE DEL MODAL
     # =========================================================
     with st.expander("6. Anexos y Gráficos", expanded=True):
-        st.write("Sube el PDF para habilitar el botón del editor de imágenes flotante.")
+        st.write("Sube el PDF para habilitar el editor de imágenes flotante.")
         pdf_file = st.file_uploader("Log Sitras PRO (.pdf)", type=["pdf"])
         
+        # Bandera de sesión para mantener el modal abierto tras los clics
+        if "mostrar_modal_sitras" not in st.session_state:
+            st.session_state.mostrar_modal_sitras = False
+
         if pdf_file is not None:
             if st.button("🚀 Abrir Editor de Sitras PRO", use_container_width=True):
                 st.session_state.clicks_modal = []
-                modal_editor_sitras(pdf_file.getvalue())
+                st.session_state.mostrar_modal_sitras = True
+                st.rerun()
+
+        # Si la bandera está activa, el modal se mantendrá abierto tras cada clic
+        if st.session_state.mostrar_modal_sitras and pdf_file is not None:
+            modal_editor_sitras(pdf_file.getvalue())
 
 # =========================================================
 # CONSTRUCCIÓN Y AUTO-ORDENAMIENTO DE EVENTOS
