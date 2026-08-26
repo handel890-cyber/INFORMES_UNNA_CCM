@@ -14,96 +14,203 @@ st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM"
 # =========================================================
 # FUNCIÓN DEL POP-UP (MODAL) ESTABLE CON FLECHAS
 # =========================================================
-@st.dialog("✏️ Editor de Eventos Sitras PRO", width="large")
+@st.dialog("✏️ Editor Visual Sitras PRO", width="large")
 def modal_editor_sitras(pdf_bytes):
-    # 1. Convertir PDF a imagen
+    # 1. Convertir la primera página del PDF a JPG en memoria
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     page = doc.load_page(0)
-    pix = page.get_pixmap(dpi=90) 
-    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-    
-    # 2. Control de clics en la sesión del Pop-up
-    if "clicks_modal" not in st.session_state:
-        st.session_state.clicks_modal = []
-        
-    col_info, col_btn = st.columns([3, 1])
-    col_info.info("🖱️ **Haz clic en el centro de las 3 filas** del evento.")
-    if col_btn.button("🔄 Reiniciar Clics"):
-        st.session_state.clicks_modal = []
-        st.rerun()
+    pix = page.get_pixmap(dpi=130)
+    img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
+    w, h = pix.width, pix.height
 
-    st.caption(f"Filas seleccionadas: {len(st.session_state.clicks_modal)} / 3")
+    # 2. Lienzo Interactivo en JavaScript
+    editor_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body {{ margin: 0; font-family: sans-serif; background-color: #262730; color: #fff; text-align: center; }}
+        #toolbar {{ padding: 8px; background: #1e1e24; display: flex; justify-content: center; gap: 12px; align-items: center; border-radius: 6px; margin-bottom: 8px; }}
+        #instrucciones {{ font-weight: bold; color: #ff4b4b; }}
+        #canvas-wrapper {{ position: relative; display: inline-block; max-height: 520px; overflow-y: auto; border: 2px solid #555; border-radius: 4px; }}
+        canvas {{ display: block; cursor: crosshair; }}
+        button {{ padding: 6px 14px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }}
+        .btn-reset {{ background-color: #555; color: white; }}
+        .btn-save {{ background-color: #ff4b4b; color: white; display: none; }}
+      </style>
+    </head>
+    <body>
+      <div id="toolbar">
+        <span id="instrucciones">Paso 1: Arrastra el mouse para encuadrar "Función de disparo".</span>
+        <button class="btn-reset" onclick="resetCanvas()">🔄 Reiniciar</button>
+        <button id="btnDescargar" class="btn-save" onclick="descargarImagen()">📥 Descargar Imagen Lista</button>
+      </div>
 
-    # 3. Mostrar imagen para cliquear (si faltan clics)
-    if len(st.session_state.clicks_modal) < 3:
-        value = streamlit_image_coordinates(img, key="sitras_modal_clicks")
-        if value is not None:
-            punto = (value["x"], value["y"])
-            if not st.session_state.clicks_modal or st.session_state.clicks_modal[-1] != punto:
-                st.session_state.clicks_modal.append(punto)
-                st.rerun()
-                
-    # 4. Procesamiento al detectar los 3 clics
-    if len(st.session_state.clicks_modal) == 3:
-        st.success("¡3 filas detectadas! Configura la posición de las flechas.")
-        
-        clics_ordenados = sorted(st.session_state.clicks_modal, key=lambda p: p[1])
-        textos = ["Re-cierre exitoso del interruptor", "Apertura automática del interruptor", "Función de disparo"]
-        
-        # Opciones de dirección
-        posiciones = []
-        c1, c2, c3 = st.columns(3)
-        with c1: posiciones.append(st.radio(f"1. {textos[0]}", ["Arriba", "Abajo"], key="p1"))
-        with c2: posiciones.append(st.radio(f"2. {textos[1]}", ["Arriba", "Abajo"], key="p2"))
-        with c3: posiciones.append(st.radio(f"3. {textos[2]}", ["Arriba", "Abajo"], key="p3"))
+      <div id="canvas-wrapper">
+        <canvas id="canvasSitras" width="{w}" height="{h}"></canvas>
+      </div>
 
-        # Dibujar imagen con Rectángulos y Flechas
-        if st.button("🖼️ Generar Imagen Final", use_container_width=True):
-            img_final = img.copy()
-            draw = ImageDraw.Draw(img_final)
-            try:
-                font = ImageFont.truetype("arial.ttf", 14)
-            except IOError:
-                font = ImageFont.load_default()
+      <script>
+        const canvas = document.getElementById("canvasSitras");
+        const ctx = canvas.getContext("2d");
+        const instruc = document.getElementById("instrucciones");
+        const btnDescargar = document.getElementById("btnDescargar");
 
-            for i, (cx, cy) in enumerate(clics_ordenados):
-                altura_fila = 12
-                top = cy - altura_fila
-                bottom = cy + altura_fila
-                left = 10
-                right = img.width - 10
-                flecha_x = img.width - 180 
-                texto = textos[i]
-                
-                # Dibujar el rectángulo rojo
-                draw.rectangle([left, top, right, bottom], outline="red", width=2)
-                
-                # Dibujar la flecha y el texto
-                if posiciones[i] == "Arriba":
-                    y_caja = top - 35
-                    draw.line([(flecha_x, y_caja + 20), (flecha_x, top)], fill="red", width=2)
-                    draw.polygon([(flecha_x, top), (flecha_x - 5, top - 7), (flecha_x + 5, top - 7)], fill="red")
-                    draw.rectangle([flecha_x - 110, y_caja, flecha_x + 120, y_caja + 20], fill="white", outline="red")
-                    draw.text((flecha_x - 105, y_caja + 2), texto, fill="red", font=font)
-                else:
-                    y_caja = bottom + 15
-                    draw.line([(flecha_x, y_caja), (flecha_x, bottom)], fill="red", width=2)
-                    draw.polygon([(flecha_x, bottom), (flecha_x - 5, bottom + 7), (flecha_x + 5, bottom + 7)], fill="red")
-                    draw.rectangle([flecha_x - 110, y_caja, flecha_x + 120, y_caja + 20], fill="white", outline="red")
-                    draw.text((flecha_x - 105, y_caja + 2), texto, fill="red", font=font)
+        const bgImg = new Image();
+        bgImg.src = "data:image/jpeg;base64,{img_b64}";
 
-            # Mostrar resultado y botón de descarga
-            st.image(img_final, use_container_width=True)
-            buf = io.BytesIO()
-            img_final.save(buf, format="PNG")
-            st.download_button(
-                label="📥 Descargar Anexo Marcado",
-                data=buf.getvalue(),
-                file_name="Anexo_Marcado.png",
-                mime="image/png",
-                type="primary",
-                use_container_width=True
-            )
+        const eventos = [
+          "Función de disparo",
+          "Apertura automática del interruptor",
+          "Re-cierre exitoso del interruptor"
+        ];
+
+        let paso = 0; 
+        let modo = "RECT"; 
+        let isDrawing = false;
+        let startX = 0, startY = 0;
+        let currentRect = null;
+        let anotaciones = []; 
+
+        bgImg.onload = () => redraw();
+
+        function redraw() {{
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(bgImg, 0, 0);
+
+          anotaciones.forEach(a => {{
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(a.rect.x, a.rect.y, a.rect.w, a.rect.h);
+
+            ctx.fillStyle = "white";
+            ctx.fillRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
+
+            ctx.fillStyle = "red";
+            ctx.font = "bold 15px Arial";
+            ctx.fillText(a.texto, a.textBox.x + 8, a.textBox.y + 18);
+
+            ctx.beginPath();
+            ctx.moveTo(a.arrow.fromX, a.arrow.fromY);
+            ctx.lineTo(a.arrow.toX, a.arrow.toY);
+            ctx.stroke();
+
+            const headlen = 8;
+            const angle = Math.atan2(a.arrow.toY - a.arrow.fromY, a.arrow.toX - a.arrow.fromX);
+            ctx.beginPath();
+            ctx.moveTo(a.arrow.toX, a.arrow.toY);
+            ctx.lineTo(a.arrow.toX - headlen * Math.cos(angle - Math.PI / 6), a.arrow.toY - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(a.arrow.toX - headlen * Math.cos(angle + Math.PI / 6), a.arrow.toY - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.fillStyle = "red";
+            ctx.fill();
+          }});
+
+          if (currentRect) {{
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(currentRect.x, currentRect.y, currentRect.w, currentRect.h);
+          }}
+        }}
+
+        function getMousePos(evt) {{
+          const rect = canvas.getBoundingClientRect();
+          const scaleX = canvas.width / rect.width;
+          const scaleY = canvas.height / rect.height;
+          return {{
+            x: (evt.clientX - rect.left) * scaleX,
+            y: (evt.clientY - rect.top) * scaleY
+          }};
+        }}
+
+        canvas.onmousedown = (e) => {{
+          if (paso >= 3) return;
+          const pos = getMousePos(e);
+
+          if (modo === "RECT") {{
+            isDrawing = true;
+            startX = pos.x;
+            startY = pos.y;
+            currentRect = {{ x: startX, y: startY, w: 0, h: 0 }};
+          }} else if (modo === "CLICK_POS") {{
+            const clickArriba = pos.y < (currentRect.y + currentRect.h / 2);
+            const centroX = currentRect.x + currentRect.w / 2;
+            const textWidth = ctx.measureText(eventos[paso]).width + 40;
+            const textHeight = 26;
+            
+            let tbX = centroX - textWidth / 2;
+            let tbY = clickArriba ? currentRect.y - 45 : currentRect.y + currentRect.h + 20;
+            let fromY = clickArriba ? tbY + textHeight : tbY;
+            let toY = clickArriba ? currentRect.y : currentRect.y + currentRect.h;
+
+            anotaciones.push({{
+              texto: eventos[paso],
+              rect: currentRect,
+              textBox: {{ x: tbX, y: tbY, w: textWidth, h: textHeight }},
+              arrow: {{ fromX: centroX, fromY: fromY, toX: centroX, toY: toY }}
+            }});
+
+            currentRect = null;
+            paso++;
+
+            if (paso < 3) {{
+              modo = "RECT";
+              instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
+            }} else {{
+              instruc.innerText = "✅ ¡Listo! Puedes descargar la imagen con los 3 eventos.";
+              btnDescargar.style.display = "inline-block";
+            }}
+            redraw();
+          }}
+        }};
+
+        canvas.onmousemove = (e) => {{
+          if (!isDrawing) return;
+          const pos = getMousePos(e);
+          currentRect = {{
+            x: Math.min(startX, pos.x),
+            y: Math.min(startY, pos.y),
+            w: Math.abs(pos.x - startX),
+            h: Math.abs(pos.y - startY)
+          }};
+          redraw();
+        }};
+
+        canvas.onmouseup = () => {{
+          if (!isDrawing) return;
+          isDrawing = false;
+          if (currentRect && currentRect.w > 10 && currentRect.h > 5) {{
+            modo = "CLICK_POS";
+            instruc.innerText = `Haz un clic ARRIBA o ABAJO del recuadro para posicionar la flecha y el texto de "${{eventos[paso]}}".`;
+          }} else {{
+            currentRect = null;
+            redraw();
+          }}
+        }};
+
+        function resetCanvas() {{
+          paso = 0;
+          modo = "RECT";
+          currentRect = null;
+          anotaciones = [];
+          btnDescargar.style.display = "none";
+          instruc.innerText = `Paso 1: Arrastra el mouse para encuadrar "${{eventos[0]}}"`;
+          redraw();
+        }}
+
+        function descargarImagen() {{
+          const link = document.createElement("a");
+          link.download = "Anexo_Sitras_Marcado.jpg";
+          link.href = canvas.toDataURL("image/jpeg", 0.95);
+          link.click();
+        }}
+      </script>
+    </body>
+    </html>
+    """
+    components.html(editor_html, height=620, scrolling=False)
 
 # =========================================================
 # 1. CATÁLOGO COMPLETO DE ALIMENTADORES Y ZONAS
@@ -229,23 +336,13 @@ with col_form:
     # =========================================================
     # SECCIÓN 6: CONTROL PERSISTENTE DEL MODAL
     # =========================================================
-    with st.expander("6. Anexos y Gráficos", expanded=True):
-        st.write("Sube el PDF para habilitar el editor de imágenes flotante.")
+	with st.expander("6. Anexos y Gráficos", expanded=True):
+        st.write("Sube el PDF para abrir el editor en tiempo real.")
         pdf_file = st.file_uploader("Log Sitras PRO (.pdf)", type=["pdf"])
         
-        # Bandera de sesión para mantener el modal abierto tras los clics
-        if "mostrar_modal_sitras" not in st.session_state:
-            st.session_state.mostrar_modal_sitras = False
-
         if pdf_file is not None:
             if st.button("🚀 Abrir Editor de Sitras PRO", use_container_width=True):
-                st.session_state.clicks_modal = []
-                st.session_state.mostrar_modal_sitras = True
-                st.rerun()
-
-        # Si la bandera está activa, el modal se mantendrá abierto tras cada clic
-        if st.session_state.mostrar_modal_sitras and pdf_file is not None:
-            modal_editor_sitras(pdf_file.getvalue())
+                modal_editor_sitras(pdf_file.getvalue())
 
 # =========================================================
 # CONSTRUCCIÓN Y AUTO-ORDENAMIENTO DE EVENTOS
