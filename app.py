@@ -461,6 +461,105 @@ with col_form:
         sup_pco_val = st.text_input("Supervisor PCO:", value="Jesús Salguedo")
         per_sub_val = st.text_input("Personal Subestaciones:", value="Carlos Morales")
         per_cat_val = st.text_input("Personal Catenarias:", value="Luis Vargas")
+import fitz  # PyMuPDF
+from PIL import Image, ImageDraw, ImageFont
+from streamlit_image_coordinates import streamlit_image_coordinates
+
+# =========================================================
+# 6. ANEXOS: MARCADO DE LOG SITRAS PRO (3 CLICS)
+# =========================================================
+with col_form:
+    with st.expander("6. Anexos: Marcado de Eventos en PDF", expanded=True):
+        st.write("Sube el log de Sitras PRO (PDF) y haz clic en las 3 filas correspondientes al disparo, apertura y recierre.")
+        
+        pdf_file = st.file_uploader("Subir Log Sitras PRO (.pdf)", type=["pdf"])
+        
+        # Inicializar el estado de los clics si no existe
+        if "clicks_sitras" not in st.session_state:
+            st.session_state.clicks_sitras = []
+            
+        if st.button("🔄 Reiniciar Clics"):
+            st.session_state.clicks_sitras = []
+            st.rerun()
+
+        if pdf_file is not None:
+            # 1. Convertir la primera página del PDF a Imagen
+            doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+            page = doc.load_page(0)
+            pix = page.get_pixmap(dpi=150) # Buena resolución
+            
+            # Crear imagen PIL
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            
+            st.caption(f"Clics registrados: {len(st.session_state.clicks_sitras)} / 3")
+            
+            # 2. Mostrar la imagen cliqueable si hay menos de 3 clics
+            if len(st.session_state.clicks_sitras) < 3:
+                value = streamlit_image_coordinates(img, key="sitras_log")
+                
+                # Si se detecta un clic nuevo, guardarlo y recargar
+                if value is not None:
+                    punto = (value["x"], value["y"])
+                    # Evitar clics duplicados continuos
+                    if not st.session_state.clicks_sitras or st.session_state.clicks_sitras[-1] != punto:
+                        st.session_state.clicks_sitras.append(punto)
+                        st.rerun()
+            
+            # 3. Cuando se alcanzan los 3 clics, procesar y dibujar
+            if len(st.session_state.clicks_sitras) == 3:
+                st.success("¡3 filas seleccionadas! Generando imagen marcada...")
+                
+                # Ordenar clics de arriba hacia abajo (menor 'y' a mayor 'y')
+                clics_ordenados = sorted(st.session_state.clicks_sitras, key=lambda p: p[1])
+                
+                textos = [
+                    "Re-cierre exitoso del interruptor", # Más arriba
+                    "Apertura automática del interruptor", # Medio
+                    "Función de disparo"                  # Más abajo
+                ]
+                
+                # Iniciar el dibujo sobre una copia de la imagen
+                img_marcada = img.copy()
+                draw = ImageDraw.Draw(img_marcada)
+                
+                # Intentar cargar una fuente por defecto (si falla, usa la básica)
+                try:
+                    font = ImageFont.truetype("arial.ttf", 16)
+                except IOError:
+                    font = ImageFont.load_default()
+
+                # Dibujar los 3 recuadros
+                for i, (x, y) in enumerate(clics_ordenados):
+                    altura_fila = 12 # Margen hacia arriba y abajo del clic
+                    y_top = y - altura_fila
+                    y_bottom = y + altura_fila
+                    
+                    # Dibujar rectángulo rojo de lado a lado
+                    draw.rectangle([10, y_top, img.width - 10, y_bottom], outline="red", width=3)
+                    
+                    # Dibujar una pequeña caja de fondo blanco para que el texto sea legible
+                    texto = textos[i]
+                    x_texto = img.width - 250 # Pegado a la derecha
+                    y_texto = y_top - 20 # Arriba del recuadro
+                    
+                    # Cuadro de texto y texto
+                    draw.rectangle([x_texto - 5, y_texto - 5, img.width - 10, y_top - 2], fill="white", outline="red")
+                    draw.text((x_texto, y_texto), texto, fill="red", font=font)
+                
+                # Mostrar la imagen resultante
+                st.image(img_marcada, caption="Log marcado con eventos", use_column_width=True)
+                
+                # Opcional: Convertir a bytes para que el usuario pueda descargarla
+                buf = io.BytesIO()
+                img_marcada.save(buf, format="PNG")
+                byte_im = buf.getvalue()
+                
+                st.download_button(
+                    label="📥 Descargar Imagen Anexo (.png)",
+                    data=byte_im,
+                    file_name="Anexo_Sitras_Marcado.png",
+                    mime="image/png"
+                )
 
 # =========================================================
 # CONSTRUCCIÓN Y AUTO-ORDENAMIENTO DE EVENTOS

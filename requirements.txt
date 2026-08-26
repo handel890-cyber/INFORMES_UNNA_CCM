@@ -1,2 +1,6 @@
 streamlit
 docxtpl
+python-docx
+pymupdf
+Pillow
+streamlit-image-coordinates
