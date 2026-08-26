@@ -3,4 +3,4 @@ docxtpl
 python-docx
 pymupdf
 Pillow
-streamlit-drawable-canvas>=0.1.33
+streamlit-image-coordinates
