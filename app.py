@@ -469,7 +469,7 @@ from streamlit_drawable_canvas import st_canvas
 # =========================================================
 # FUNCIÓN DEL POP-UP (MODAL) PARA DIBUJAR
 # =========================================================
-@st.experimental_dialog("✏️ Editor de Eventos Sitras PRO", width="large")
+@st.dialog("✏️ Editor de Eventos Sitras PRO", width="large")
 def modal_editor_sitras(pdf_bytes):
     # 1. Convertir PDF a imagen
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
