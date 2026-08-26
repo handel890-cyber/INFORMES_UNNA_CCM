@@ -14,34 +14,37 @@ st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM"
 # =========================================================
 # FUNCIÓN DEL POP-UP (MODAL) ESTABLE CON FLECHAS
 # =========================================================
+# =========================================================
+# MODAL CON EDITOR CANVAS HTML5 / JS (CLIC DERECHO DESHACER)
+# =========================================================
 @st.dialog("✏️ Editor Visual Sitras PRO", width="large")
 def modal_editor_sitras(pdf_bytes):
-    # 1. Convertir la primera página del PDF a JPG en memoria
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     page = doc.load_page(0)
     pix = page.get_pixmap(dpi=130)
     img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
     w, h = pix.width, pix.height
 
-    # 2. Lienzo Interactivo en JavaScript
     editor_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
       <style>
         body {{ margin: 0; font-family: sans-serif; background-color: #262730; color: #fff; text-align: center; }}
-        #toolbar {{ padding: 8px; background: #1e1e24; display: flex; justify-content: center; gap: 12px; align-items: center; border-radius: 6px; margin-bottom: 8px; }}
+        #toolbar {{ padding: 8px; background: #1e1e24; display: flex; justify-content: center; gap: 12px; align-items: center; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }}
         #instrucciones {{ font-weight: bold; color: #ff4b4b; }}
         #canvas-wrapper {{ position: relative; display: inline-block; max-height: 520px; overflow-y: auto; border: 2px solid #555; border-radius: 4px; }}
         canvas {{ display: block; cursor: crosshair; }}
-        button {{ padding: 6px 14px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }}
+        button {{ padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }}
+        .btn-undo {{ background-color: #f39c12; color: white; }}
         .btn-reset {{ background-color: #555; color: white; }}
-        .btn-save {{ background-color: #ff4b4b; color: white; display: none; }}
+        .btn-save {{ background-color: #27ae60; color: white; display: none; }}
       </style>
     </head>
     <body>
       <div id="toolbar">
         <span id="instrucciones">Paso 1: Arrastra el mouse para encuadrar "Función de disparo".</span>
+        <button class="btn-undo" onclick="deshacer()">↩ Deshacer (Clic Derecho)</button>
         <button class="btn-reset" onclick="resetCanvas()">🔄 Reiniciar</button>
         <button id="btnDescargar" class="btn-save" onclick="descargarImagen()">📥 Descargar Imagen Lista</button>
       </div>
@@ -79,26 +82,32 @@ def modal_editor_sitras(pdf_bytes):
           ctx.drawImage(bgImg, 0, 0);
 
           anotaciones.forEach(a => {{
+            // Recuadro rojo principal
             ctx.strokeStyle = "red";
             ctx.lineWidth = 3;
             ctx.strokeRect(a.rect.x, a.rect.y, a.rect.w, a.rect.h);
 
+            // Fondo blanco del texto con borde rojo
             ctx.fillStyle = "white";
             ctx.fillRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
             ctx.strokeStyle = "red";
             ctx.lineWidth = 2;
             ctx.strokeRect(a.textBox.x, a.textBox.y, a.textBox.w, a.textBox.h);
 
+            // Texto perfectamente centrado
             ctx.fillStyle = "red";
-            ctx.font = "bold 15px Arial";
-            ctx.fillText(a.texto, a.textBox.x + 8, a.textBox.y + 18);
+            ctx.font = "bold 14px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(a.texto, a.textBox.x + (a.textBox.w / 2), a.textBox.y + (a.textBox.h / 2));
 
+            // Flecha indicadora
             ctx.beginPath();
             ctx.moveTo(a.arrow.fromX, a.arrow.fromY);
             ctx.lineTo(a.arrow.toX, a.arrow.toY);
             ctx.stroke();
 
-            const headlen = 8;
+            const headlen = 9;
             const angle = Math.atan2(a.arrow.toY - a.arrow.fromY, a.arrow.toX - a.arrow.fromX);
             ctx.beginPath();
             ctx.moveTo(a.arrow.toX, a.arrow.toY);
@@ -108,6 +117,7 @@ def modal_editor_sitras(pdf_bytes):
             ctx.fill();
           }});
 
+          // Recuadro dinámico mientras se dibuja
           if (currentRect) {{
             ctx.strokeStyle = "red";
             ctx.lineWidth = 3;
@@ -125,7 +135,31 @@ def modal_editor_sitras(pdf_bytes):
           }};
         }}
 
+        // CLIC DERECHO PARA DESHACER (PASO ATRÁS)
+        window.oncontextmenu = (e) => {{
+          e.preventDefault();
+          deshacer();
+        }};
+
+        function deshacer() {{
+          if (modo === "CLICK_POS") {{
+            // Cancela el recuadro actual y vuelve a pedirlo
+            currentRect = null;
+            modo = "RECT";
+            instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
+          }} else if (anotaciones.length > 0) {{
+            // Elimina la última anotación completada
+            anotaciones.pop();
+            paso--;
+            modo = "RECT";
+            btnDescargar.style.display = "none";
+            instruc.innerText = `Paso ${{paso + 1}}: Arrastra el mouse para encuadrar "${{eventos[paso]}}"`;
+          }}
+          redraw();
+        }}
+
         canvas.onmousedown = (e) => {{
+          if (e.button === 2) return; // Ignora clic derecho aquí
           if (paso >= 3) return;
           const pos = getMousePos(e);
 
@@ -137,8 +171,11 @@ def modal_editor_sitras(pdf_bytes):
           }} else if (modo === "CLICK_POS") {{
             const clickArriba = pos.y < (currentRect.y + currentRect.h / 2);
             const centroX = currentRect.x + currentRect.w / 2;
-            const textWidth = ctx.measureText(eventos[paso]).width + 40;
-            const textHeight = 26;
+            
+            // Medición con márgenes holgados para evitar desbordes
+            ctx.font = "bold 14px Arial";
+            const textWidth = ctx.measureText(eventos[paso]).width + 30;
+            const textHeight = 28;
             
             let tbX = centroX - textWidth / 2;
             let tbY = clickArriba ? currentRect.y - 45 : currentRect.y + currentRect.h + 20;
@@ -181,9 +218,9 @@ def modal_editor_sitras(pdf_bytes):
         canvas.onmouseup = () => {{
           if (!isDrawing) return;
           isDrawing = false;
-          if (currentRect && currentRect.w > 10 && currentRect.h > 5) {{
+          if (currentRect && currentRect.w > 15 && currentRect.h > 8) {{
             modo = "CLICK_POS";
-            instruc.innerText = `Haz un clic ARRIBA o ABAJO del recuadro para posicionar la flecha y el texto de "${{eventos[paso]}}".`;
+            instruc.innerText = `Haz un clic ARRIBA o ABAJO del recuadro para posicionar "${{eventos[paso]}}". (Clic derecho para cancelar recuadro)`;
           }} else {{
             currentRect = null;
             redraw();
@@ -211,7 +248,6 @@ def modal_editor_sitras(pdf_bytes):
     </html>
     """
     components.html(editor_html, height=620, scrolling=False)
-
 # =========================================================
 # 1. CATÁLOGO COMPLETO DE ALIMENTADORES Y ZONAS
 # =========================================================
