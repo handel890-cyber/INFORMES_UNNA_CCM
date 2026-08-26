@@ -466,10 +466,6 @@ from PIL import Image, ImageDraw, ImageFont
 from streamlit_image_coordinates import streamlit_image_coordinates
 
 # =========================================================
-# 6. ANEXOS: MARCADO DE LOG SITRAS PRO (3 CLICS)
-# =========================================================
-with col_form:
-    # =========================================================
 # 6. ANEXOS: MARCADO DE LOG SITRAS PRO (3 CLICS OPTIMIZADO)
 # =========================================================
 with col_form:
