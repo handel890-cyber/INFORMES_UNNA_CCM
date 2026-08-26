@@ -439,11 +439,11 @@ with col_form:
         # 2. Condición Señales ahora es un menú desplegable
         condicion = c_op4.selectbox("Condición Señales:", ["Señales encendidas", "Señales apagadas"])
         
-        c_op5, c_op6 = st.columns(2)
+        c_op5 = st.columns(1)
         
         # 3. Horario Operación ahora es un menú desplegable
         operacion_val = c_op5.selectbox("Horario Operación:", ["Hora pico", "Hora valle"])
-        zona_manual = c_op6.text_input("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
+
 	
     with st.expander("4. Cronología y Horas (HH:MM:SS)", expanded=True):
         st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word.")
