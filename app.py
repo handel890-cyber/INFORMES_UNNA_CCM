@@ -24,30 +24,27 @@ def get_ocr_reader():
 def extraer_datos_vicos(file_bytes, nombre_archivo):
     texto_bruto = ""
     
-    # 1. Extracción de texto según el formato del archivo
     if nombre_archivo.lower().endswith('.pdf'):
         doc = fitz.open(stream=file_bytes, filetype="pdf")
         for page in doc:
             texto_bruto += page.get_text("text") + "\n"
     else:
-        # OCR para imágenes
         reader = get_ocr_reader()
         img = Image.open(io.BytesIO(file_bytes))
         resultados = reader.readtext(np.array(img))
         resultados.sort(key=lambda r: (r[0][0][1] // 15, r[0][0][0]))
         texto_bruto = "\n".join([r[1] for r in resultados])
 
-    # 2. División estricta por eventos (Cada evento inicia con una fecha)
     bloques = re.split(r'(?=\b\d{2}/\d{2}/\d{4}\b)', texto_bruto)
     
     fecha_encontrada = None
-    hora_encontrada = None
+    hora_disparo = None
+    hora_recierre = None
 
     for bloque in bloques:
         if not bloque.strip():
             continue
         
-        # Buscar la hora exacta dentro de este bloque
         hora_match = re.search(r'\b\d{2}:\d{2}:\d{2}[,\.]\d{3}\b', bloque)
         if not hora_match:
             continue
@@ -55,21 +52,18 @@ def extraer_datos_vicos(file_bytes, nombre_archivo):
         fecha = re.search(r'\b\d{2}/\d{2}/\d{4}\b', bloque).group()
         hora = hora_match.group()
         
-        # Validar coincidencia en la MISMA fila/bloque
         b_limpio = bloque.lower().replace('\n', ' ').replace('|', ' ')
-        if ("disparo" in b_limpio or "di/dt" in b_limpio) and "vp: desconectado" in b_limpio:
+        
+        # Buscar Disparo (VP: Desconectado)
+        if not hora_disparo and ("disparo" in b_limpio or "di/dt" in b_limpio) and "vp: desconectado" in b_limpio:
             fecha_encontrada = fecha
-            hora_encontrada = hora
-            break
+            hora_disparo = hora
+            
+        # Buscar Recierre (VP: Conectado)
+        if not hora_recierre and ("disparo" in b_limpio or "di/dt" in b_limpio) and "vp: conectado" in b_limpio:
+            hora_recierre = hora
 
-    # Fallback: Si no hay coincidencia estricta, toma el primer registro válido
-    if not fecha_encontrada:
-        fecha_fb = re.search(r'\b\d{2}/\d{2}/\d{4}\b', texto_bruto)
-        hora_fb = re.search(r'\b\d{2}:\d{2}:\d{2}[,\.]\d{3}\b', texto_bruto)
-        fecha_encontrada = fecha_fb.group() if fecha_fb else None
-        hora_encontrada = hora_fb.group() if hora_fb else None
-
-    return fecha_encontrada, hora_encontrada
+    return fecha_encontrada, hora_disparo, hora_recierre
 
 # =========================================================
 # COMPONENTE CANVAS BIDIRECCIONAL (SITRAS PRO)
@@ -395,23 +389,40 @@ with col_form:
     # =========================================================
     # OCR: AUTO-LLENADO DESDE VICOS RSC
     # =========================================================
-    with st.expander("🔍 Cargar Captura VICOS RSC (Auto-llenado)", expanded=True):
-        st.write("Sube la imagen o el PDF del Libro de Eventos de SCADA para extraer Fecha y Hora (con milisegundos).")
-        img_vicos_file = st.file_uploader("Libro de Eventos ALARMA (.pdf / .jpg / .png)", type=["pdf", "jpg", "png", "jpeg"])
+    # =========================================================
+    # OCR: AUTO-LLENADO DESDE VICOS RSC (APERTURADO Y VECINO)
+    # =========================================================
+    with st.expander("🔍 Cargar Capturas VICOS RSC (Auto-llenado)", expanded=True):
+        st.write("Sube los registros del SCADA para extraer automáticamente fechas, horas de disparo y recierres.")
         
-        if img_vicos_file is not None:
-            if st.button("🚀 Extraer Datos", use_container_width=True):
-                with st.spinner("Procesando documento del SCADA..."):
-                    f_det, h_det = extraer_datos_vicos(img_vicos_file.getvalue(), img_vicos_file.name)
+        c_vicos1, c_vicos2 = st.columns(2)
+        with c_vicos1:
+            img_vicos_ap = st.file_uploader("Libro Eventos (Aperturado)", type=["pdf", "jpg", "png", "jpeg"], key="up_ap")
+        with c_vicos2:
+            img_vicos_vec = st.file_uploader("Libro Eventos (Vecino)", type=["pdf", "jpg", "png", "jpeg"], key="up_vec")
+        
+        if st.button("🚀 Extraer Datos de ambos SCADA", use_container_width=True):
+            with st.spinner("Procesando documentos..."):
+                if img_vicos_ap is not None:
+                    f_det, h_disp_det, h_rec_det = extraer_datos_vicos(img_vicos_ap.getvalue(), img_vicos_ap.name)
                     if f_det:
-                        try:
-                            st.session_state["fecha_ocr"] = datetime.strptime(f_det, "%d/%m/%Y").date()
-                        except ValueError:
-                            pass
-                    if h_det:
-                        st.session_state["hora_vicos_disparo_ocr"] = h_det
-                        st.session_state["h_disp_cronologia"] = h_det.split(",")[0]  # Sin milisegundos para la cronología
-                    st.success(f"Detección completada -> Fecha: {f_det} | Hora Disparo (ms): {h_det}")
+                        st.session_state["fecha_ocr"] = datetime.strptime(f_det, "%d/%m/%Y").date()
+                    if h_disp_det:
+                        st.session_state["hora_vicos_disparo"] = h_disp_det
+                        st.session_state["h_disp_cronologia"] = h_disp_det.split(",")[0]
+                    if h_rec_det:
+                        st.session_state["h_dcierre_cronologia"] = h_rec_det.split(",")[0]
+
+                if img_vicos_vec is not None:
+                    _, h_disp_vec, h_rec_vec = extraer_datos_vicos(img_vicos_vec.getvalue(), img_vicos_vec.name)
+                    if h_disp_vec:
+                        st.session_state["hora_vicos_disparo_vecina"] = h_disp_vec
+                        st.session_state["h_vec_cronologia"] = h_disp_vec.split(",")[0]
+                    if h_rec_vec:
+                        st.session_state["h_vcierre_cronologia"] = h_rec_vec.split(",")[0]
+
+                st.success("✅ ¡Datos extraídos correctamente de los reportes SCADA!")
+                st.rerun()
 
     with st.expander("1. Selección de Equipos (Filtro por Zona)", expanded=True):
         opciones_aperturado = list(CATALOGO_ALIMENTADORES.keys())
