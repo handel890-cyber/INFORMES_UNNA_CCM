@@ -1,7 +1,7 @@
-streamlit==1.36.0
+streamlit
 docxtpl
 python-docx
-pymupdf
+PyMuPDF
 Pillow
-streamlit-drawable-canvas
 easyocr
+opencv-python-headless
