@@ -10,6 +10,7 @@ import numpy as np
 from datetime import datetime
 import fitz  # PyMuPDF
 from PIL import Image, ImageDraw, ImageFont
+from docx.shared import Mm, Pt
 import easyocr
 
 st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM")
