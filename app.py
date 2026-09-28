@@ -333,14 +333,15 @@ def modal_editor_oscilografico(pdf_bytes):
     doc_pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
     num_paginas = len(doc_pdf)
     
-    # Selector de página (por defecto la página 2, índice 1, donde suele estar el gráfico SIGRA)
+    # Selector para elegir la página (ej. la segunda página, índice 1)
     pag_idx = st.selectbox("Seleccionar página del PDF SIGRA:", range(num_paginas), index=1 if num_paginas > 1 else 0, key="select_pag_sigra")
     
     page = doc_pdf.load_page(pag_idx)
-    pix = page.get_pixmap(dpi=130)
+    # Renderizamos en alta resolución para que al recortar no pierda nitidez
+    pix = page.get_pixmap(dpi=150)
     img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
     
-    # Renderiza el editor reutilizando el componente canvas pero apuntando a la variable oscilográfica
+    # Usamos el componente canvas reutilizando el widget, guardando el resultado en la variable oscilográfica
     resultado_b64 = editor_sitras_component(img_b64=img_b64, w=pix.width, h=pix.height, key="oscilografico_canvas_widget")
     
     if resultado_b64:
@@ -524,6 +525,7 @@ with col_form:
 
         if "anexo_sitras_bytes" in st.session_state and st.session_state["anexo_sitras_bytes"] is not None:
             st.success("✅ Anexo Sitras PRO adjuntado y visible en la vista previa del Word.")
+            
         st.write("---")
         st.write("**Registro Oscilográfico (SIGRA)**")
         pdf_osc_file = st.file_uploader("Log SIGRA (.pdf)", type=["pdf"], key="up_osc")
@@ -578,24 +580,24 @@ with col_preview:
         try:
             doc = DocxTemplate(plantilla_doc)
             
-            # Anexo Sitras PRO
+            # 1. Anexo Sitras PRO
             if "anexo_sitras_bytes" in st.session_state and st.session_state["anexo_sitras_bytes"] is not None:
                 img_stream = io.BytesIO(st.session_state["anexo_sitras_bytes"])
-                context["anexo_sitras"] = InlineImage(doc, img_stream, width=Mm(165))
+                context["anexo_sitras_disparo"] = InlineImage(doc, img_stream, width=Mm(165))
             else:
-                context["anexo_sitras"] = ""
+                context["anexo_sitras_disparo"] = ""
 
-            # 👉 AQUÍ VA EL ANEXO OSCILOGRÁFICO (SIGRA)
+            # 2. Anexo Registro Oscilográfico (SIGRA)
             if "anexo_oscilografico_bytes" in st.session_state and st.session_state["anexo_oscilografico_bytes"] is not None:
                 img_stream_osc = io.BytesIO(st.session_state["anexo_oscilografico_bytes"])
                 context["anexo_registro_oscilografico"] = InlineImage(doc, img_stream_osc, width=Mm(165))
             else:
                 context["anexo_registro_oscilografico"] = ""
 
+            # Renderizado único de la plantilla con todo el contexto
             doc.render(context)
 
-            doc.render(context)
-            
+
             tabla_cronologia = None
             for table in doc.docx.tables:
                 if len(table.rows) > 0 and "HORA" in table.rows[0].cells[0].text.upper():
