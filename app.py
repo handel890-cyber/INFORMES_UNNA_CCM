@@ -5,20 +5,70 @@ import streamlit.components.v1 as components
 import io
 import base64
 import os
+import re
+import numpy as np
 from datetime import datetime
 import fitz  # PyMuPDF
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
+import easyocr
 
 st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM")
 
 # =========================================================
-# CREACIÓN DEL COMPONENTE BIDIRECCIONAL (CANVAS JS <-> PYTHON)
+# MOTOR OCR PARA LIBRO DE EVENTOS VICOS RSC
+# =========================================================
+@st.cache_resource
+def get_ocr_reader():
+    # Carga el modelo OCR en memoria una sola vez
+    return easyocr.Reader(['es'], gpu=False)
+
+def extraer_datos_vicos(imagen_bytes):
+    reader = get_ocr_reader()
+    img = Image.open(io.BytesIO(imagen_bytes))
+    
+    # Lectura de texto con coordenadas
+    resultados = reader.readtext(np.array(img))
+    
+    # Patrones para Fecha (DD/MM/YYYY) y Hora con ms (HH:MM:SS,mmm)
+    patron_fecha = r'\b(\d{2}/\d{2}/\d{4})\b'
+    patron_hora_ms = r'\b(\d{2}:\d{2}:\d{2},\d{3})\b'
+    
+    texto_completo = " ".join([res[1] for res in resultados])
+    fechas = re.findall(patron_fecha, texto_completo)
+    fecha_encontrada = fechas[0] if fechas else None
+    
+    # Ordenar bloques para procesar por filas
+    lineas_ordenadas = sorted(resultados, key=lambda r: (r[0][0][1] // 18, r[0][0][0]))
+    filas = {}
+    for r in lineas_ordenadas:
+        y_center = int(r[0][0][1] // 18)
+        filas.setdefault(y_center, []).append(r[1])
+        
+    hora_disparo_ms = None
+    
+    # Buscar la fila específica de 'Disparo' y 'Desconectado'
+    for y_idx, textos in filas.items():
+        linea = " ".join(textos).lower()
+        if ("disparo" in linea or "di/dt" in linea) and "desconectado" in linea:
+            horas_fila = re.findall(patron_hora_ms, " ".join(textos))
+            if horas_fila:
+                hora_disparo_ms = horas_fila[0]
+                break
+                
+    # Fallback si no encuentra la fila exacta: toma la primera hora con ms
+    if not hora_disparo_ms:
+        todas_horas = re.findall(patron_hora_ms, texto_completo)
+        hora_disparo_ms = todas_horas[0] if todas_horas else None
+
+    return fecha_encontrada, hora_disparo_ms
+
+# =========================================================
+# COMPONENTE CANVAS BIDIRECCIONAL (SITRAS PRO)
 # =========================================================
 COMPONENT_DIR = os.path.join(os.path.dirname(__file__), "editor_component")
 os.makedirs(COMPONENT_DIR, exist_ok=True)
 INDEX_HTML_PATH = os.path.join(COMPONENT_DIR, "index.html")
 
-# Generamos el archivo HTML del editor interactivo
 with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
     f.write("""<!DOCTYPE html>
 <html>
@@ -254,7 +304,7 @@ with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
 editor_sitras_component = components.declare_component("editor_sitras", path=COMPONENT_DIR)
 
 # =========================================================
-# MODAL DEL EDITOR
+# MODAL DEL EDITOR SITRAS PRO
 # =========================================================
 @st.dialog("✏️ Editor Visual Sitras PRO", width="large")
 def modal_editor_sitras(pdf_bytes):
@@ -273,7 +323,7 @@ def modal_editor_sitras(pdf_bytes):
         st.rerun()
 
 # =========================================================
-# 1. CATÁLOGO COMPLETO DE ALIMENTADORES Y ZONAS
+# CATÁLOGO DE ALIMENTADORES
 # =========================================================
 CATALOGO_ALIMENTADORES = {
     "SER01_PTVES - AL3 (154-3)": {"interruptor": "154-3 SER01_PTVES", "alimentador_ser": "AL3-154 SER01_PTVES", "ser": "SER01_PTVES", "alimentador": "AL3", "interruptor_num": "154-3", "zona":"201,203"},
@@ -334,6 +384,27 @@ with col_form:
         if plantilla_subida is not None:
             plantilla_doc = plantilla_subida
 
+    # =========================================================
+    # OCR: AUTO-LLENADO DESDE VICOS RSC
+    # =========================================================
+    with st.expander("🔍 Cargar Captura VICOS RSC (Auto-llenado)", expanded=True):
+        st.write("Sube la imagen del Libro de Eventos de SCADA para extraer Fecha y Hora (con milisegundos).")
+        img_vicos_file = st.file_uploader("Captura Libro de Eventos ALARMA (.jpg / .png)", type=["jpg", "png", "jpeg"])
+        
+        if img_vicos_file is not None:
+            if st.button("🚀 Extraer Datos con OCR", use_container_width=True):
+                with st.spinner("Procesando imagen del SCADA..."):
+                    f_det, h_det = extraer_datos_vicos(img_vicos_file.getvalue())
+                    if f_det:
+                        try:
+                            st.session_state["fecha_ocr"] = datetime.strptime(f_det, "%d/%m/%Y").date()
+                        except ValueError:
+                            pass
+                    if h_det:
+                        st.session_state["hora_vicos_disparo_ocr"] = h_det
+                        st.session_state["h_disp_cronologia"] = h_det.split(",")[0]  # Sin milisegundos para la cronología
+                    st.success(f"Detección completada -> Fecha: {f_det} | Hora Disparo (ms): {h_det}")
+
     with st.expander("1. Selección de Equipos (Filtro por Zona)", expanded=True):
         opciones_aperturado = list(CATALOGO_ALIMENTADORES.keys())
         sel_aperturado = st.selectbox("Subestación / Celda Aperturada:", opciones_aperturado, index=0)
@@ -363,11 +434,15 @@ with col_form:
 
     with st.expander("3. Datos de Operación"):
         c_op1, c_op2 = st.columns(2)
-        fecha_raw = c_op1.date_input("Fecha:", value=datetime.today())
+        
+        fecha_default = st.session_state.get("fecha_ocr", datetime.today())
+        fecha_raw = c_op1.date_input("Fecha:", value=fecha_default)
         fecha_val = fecha_raw.strftime("%d/%m/%Y")
+        
         dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
         dia_val = dias_semana[fecha_raw.weekday()]
         c_op2.text_input("Día (Automático):", value=dia_val, disabled=True)
+        
         c_op3, c_op4 = st.columns(2)
         headway = c_op3.text_input("Headway (min):", value="3")
         condicion = c_op4.selectbox("Condición Señales:", ["Señales encendidas", "Señales apagadas"])
@@ -377,26 +452,26 @@ with col_form:
 
     with st.expander("4. Cronología y Horas (HH:MM:SS)"):
         st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word.")
-        h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value="21:15:02")
-        h_vec = st.text_input("Hora disparo Vecino (SCADA):", value="21:15:03")
-        h_dcierre = st.text_input("Hora recierre Aperturado:", value="21:15:10")
-        h_vcierre = st.text_input("Hora recierre Vecino:", value="21:15:12")
-        h_rep = st.text_input("Hora reporte CCM a PCO:", value="21:20:00")
-        h_env_st = st.text_input("Hora envío solicitud ST:", value="21:25:00")
-        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="21:32:00")
-        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="22:23:00")
-        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="07:28:00")
+        
+        h_disp_defecto = st.session_state.get("h_disp_cronologia", "07:57:31")
+        h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value=h_disp_defecto)
+        
+        h_vec = st.text_input("Hora disparo Vecino (SCADA):", value="07:57:32")
+        h_dcierre = st.text_input("Hora recierre Aperturado:", value="07:57:39")
+        h_vcierre = st.text_input("Hora recierre Vecino:", value="07:57:41")
+        h_rep = st.text_input("Hora reporte CCM a PCO:", value="08:02:00")
+        h_env_st = st.text_input("Hora envío solicitud ST:", value="08:05:00")
+        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="08:15:00")
+        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="08:45:00")
+        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="09:10:00")
 
     with st.expander("5. Personal Involucrado"):
         sup_pco_val = st.text_input("Supervisor PCO:", value="Jesús Salguedo")
         per_sub_val = st.text_input("Personal Subestaciones:", value="Carlos Morales")
         per_cat_val = st.text_input("Personal Catenarias:", value="Luis Vargas")
 
-    # =========================================================
-    # SECCIÓN 6: DENTRO DE COL_FORM CON VÍNCULO DIRECTO
-    # =========================================================
     with st.expander("6. Anexos y Gráficos", expanded=True):
-        st.write("Sube el PDF para abrir el editor visual en tiempo real.")
+        st.write("Sube el PDF para abrir el editor visual de Sitras PRO en tiempo real.")
         pdf_file = st.file_uploader("Log Sitras PRO (.pdf)", type=["pdf"])
         
         if pdf_file is not None:
@@ -423,12 +498,15 @@ if h_cat.strip(): eventos_para_ordenar.append({"hora": h_cat.strip(), "ubicacion
 
 cronologia_ordenada = sorted(eventos_para_ordenar, key=lambda x: str(x["hora"]))
 
+# Captura de la hora con milisegundos para el informe Word (usa el OCR si existe)
+hora_vicos_final = st.session_state.get("hora_vicos_disparo_ocr", f"{h_disp},000")
+
 context = {
     "interruptor_aperturado": datos_ap["interruptor"], "alimentador_ser_aperturado": datos_ap["alimentador_ser"], "ser_aperturado": datos_ap["ser"], "alimentador_aperturado": datos_ap["alimentador"], "alimentador_aperturado_num": datos_ap["interruptor_num"],
     "interruptor_vecino": datos_vec["interruptor"], "alimentador_ser_vecino": datos_vec["alimentador_ser"], "ser_vecino": datos_vec["ser"], "alimentador_vecino": datos_vec["alimentador"], "alimentador_vecino_num": datos_vec["interruptor_num"],
     "funcion_disparo_inicial": f_disp_ini, "funcion_disparo_final": f_disp_fin, "funcion_disparo_vecina_inicial": f_disp_vec_ini, "funcion_disparo_vecina_final": f_disp_vec_fin,
     "st_aperturado": st_ap, "st_vecino": st_vec, "st_zona": st_zn, "corriente": corriente_val,
-    "fecha": fecha_val, "dia": dia_val, "tiempo_entre_trenes": headway, "condicion_senales": condicion, "operacion": operacion_val, "zona": zona_manual,
+    "fecha": fecha_val, "hora_vicos_disparo": hora_vicos_final, "dia": dia_val, "tiempo_entre_trenes": headway, "condicion_senales": condicion, "operacion": operacion_val, "zona": zona_manual,
     "sup_pco": sup_pco_val, "per_sub": per_sub_val, "per_cat": per_cat_val
 }
 
@@ -442,7 +520,6 @@ with col_preview:
         try:
             doc = DocxTemplate(plantilla_doc)
             
-            # Inyección de la imagen del anexo si existe en memoria
             if "anexo_sitras_bytes" in st.session_state and st.session_state["anexo_sitras_bytes"] is not None:
                 img_stream = io.BytesIO(st.session_state["anexo_sitras_bytes"])
                 context["anexo_sitras"] = InlineImage(doc, img_stream, width=Mm(165))
@@ -451,7 +528,6 @@ with col_preview:
 
             doc.render(context)
             
-            # Inyección de la tabla de cronología (HORA)
             tabla_cronologia = None
             for table in doc.docx.tables:
                 if len(table.rows) > 0 and "HORA" in table.rows[0].cells[0].text.upper():

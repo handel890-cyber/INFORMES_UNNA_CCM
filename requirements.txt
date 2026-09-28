@@ -1,6 +1,7 @@
-streamlit
+streamlit==1.36.0
 docxtpl
 python-docx
 pymupdf
 Pillow
-streamlit-image-coordinates
+streamlit-drawable-canvas
+easyocr
