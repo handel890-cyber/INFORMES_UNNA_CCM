@@ -406,19 +406,19 @@ with col_form:
                         st.session_state["fecha_ocr"] = datetime.strptime(f_det, "%d/%m/%Y").date()
                     if h_disp_det:
                         st.session_state["hora_vicos_disparo"] = h_disp_det
-                        st.session_state["h_disp_cronologia"] = h_disp_det.split(",")[0]
+                        st.session_state["h_disp_cronologia"] = h_disp_det
                     if h_rec_det:
-                        st.session_state["h_dcierre_cronologia"] = h_rec_det.split(",")[0]
+                        st.session_state["h_dcierre_cronologia"] = h_rec_det
 
                 if img_vicos_vec is not None:
                     _, h_disp_vec, h_rec_vec = extraer_datos_vicos(img_vicos_vec.getvalue(), img_vicos_vec.name)
                     if h_disp_vec:
                         st.session_state["hora_vicos_disparo_vecina"] = h_disp_vec
-                        st.session_state["h_vec_cronologia"] = h_disp_vec.split(",")[0]
+                        st.session_state["h_vec_cronologia"] = h_disp_vec
                     if h_rec_vec:
-                        st.session_state["h_vcierre_cronologia"] = h_rec_vec.split(",")[0]
+                        st.session_state["h_vcierre_cronologia"] = h_rec_vec
 
-                st.success("✅ ¡Datos extraídos correctamente de los reportes SCADA!")
+                st.success("✅ ¡Datos extraídos correctamente con milisegundos de los reportes SCADA!")
                 st.rerun()
 
     with st.expander("1. Selección de Equipos (Filtro por Zona)", expanded=True):
@@ -466,23 +466,23 @@ with col_form:
         operacion_val = c_op5.selectbox("Horario Operación:", ["Hora pico", "Hora valle"])
         zona_manual = c_op6.text_input("Zona afectada (en documento):", value=f"Zona {zona_detectada}")
 
-    with st.expander("4. Cronología y Horas (HH:MM:SS)"):
-        st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word.")
+    with st.expander("4. Cronología y Horas (HH:MM:SS,mmm)"):
+        st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word con milisegundos.")
         
-        h_disp_def = st.session_state.get("h_disp_cronologia", "07:57:31")
-        h_vec_def = st.session_state.get("h_vec_cronologia", "07:57:32")
-        h_dcierre_def = st.session_state.get("h_dcierre_cronologia", "07:57:39")
-        h_vcierre_def = st.session_state.get("h_vcierre_cronologia", "07:57:41")
+        h_disp_def = st.session_state.get("h_disp_cronologia", "07:57:31,375")
+        h_vec_def = st.session_state.get("h_vec_cronologia", "07:57:32,000")
+        h_dcierre_def = st.session_state.get("h_dcierre_cronologia", "07:57:39,156")
+        h_vcierre_def = st.session_state.get("h_vcierre_cronologia", "07:57:41,000")
 
         h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value=h_disp_def)
         h_vec = st.text_input("Hora disparo Vecino (SCADA):", value=h_vec_def)
         h_dcierre = st.text_input("Hora recierre Aperturado:", value=h_dcierre_def)
         h_vcierre = st.text_input("Hora recierre Vecino:", value=h_vcierre_def)
-        h_rep = st.text_input("Hora reporte CCM a PCO:", value="08:02:00")
-        h_env_st = st.text_input("Hora envío solicitud ST:", value="08:05:00")
-        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="08:15:00")
-        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="08:45:00")
-        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="09:10:00")
+        h_rep = st.text_input("Hora reporte CCM a PCO:", value="08:02:00,000")
+        h_env_st = st.text_input("Hora envío solicitud ST:", value="08:05:00,000")
+        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="08:15:00,000")
+        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="08:45:00,000")
+        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="09:10:00,000")
 
     with st.expander("5. Personal Involucrado"):
         sup_pco_val = st.text_input("Supervisor PCO:", value="Jesús Salguedo")
@@ -518,8 +518,8 @@ if h_cat.strip(): eventos_para_ordenar.append({"hora": h_cat.strip(), "ubicacion
 cronologia_ordenada = sorted(eventos_para_ordenar, key=lambda x: str(x["hora"]))
 
 # Variables exactas para el documento Word con milisegundos intactos
-hora_vicos_ap_final = st.session_state.get("hora_vicos_disparo", f"{h_disp},000")
-hora_vicos_vec_final = st.session_state.get("hora_vicos_disparo_vecina", f"{h_vec},000")
+hora_vicos_ap_final = st.session_state.get("hora_vicos_disparo", f"{h_disp}")
+hora_vicos_vec_final = st.session_state.get("hora_vicos_disparo_vecina", f"{h_vec}")
 
 context = {
     "interruptor_aperturado": datos_ap["interruptor"], "alimentador_ser_aperturado": datos_ap["alimentador_ser"], "ser_aperturado": datos_ap["ser"], "alimentador_aperturado": datos_ap["alimentador"], "alimentador_aperturado_num": datos_ap["interruptor_num"],
