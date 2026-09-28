@@ -15,52 +15,61 @@ import easyocr
 st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM")
 
 # =========================================================
-# MOTOR OCR PARA LIBRO DE EVENTOS VICOS RSC
+# EXTRACCIÓN INTELIGENTE DESDE LIBRO DE EVENTOS VICOS RSC
 # =========================================================
 @st.cache_resource
 def get_ocr_reader():
-    # Carga el modelo OCR en memoria una sola vez
     return easyocr.Reader(['es'], gpu=False)
 
-def extraer_datos_vicos(imagen_bytes):
-    reader = get_ocr_reader()
-    img = Image.open(io.BytesIO(imagen_bytes))
+def extraer_datos_vicos(file_bytes, nombre_archivo):
+    texto_bruto = ""
     
-    # Lectura de texto con coordenadas
-    resultados = reader.readtext(np.array(img))
-    
-    # Patrones para Fecha (DD/MM/YYYY) y Hora con ms (HH:MM:SS,mmm)
-    patron_fecha = r'\b(\d{2}/\d{2}/\d{4})\b'
-    patron_hora_ms = r'\b(\d{2}:\d{2}:\d{2},\d{3})\b'
-    
-    texto_completo = " ".join([res[1] for res in resultados])
-    fechas = re.findall(patron_fecha, texto_completo)
-    fecha_encontrada = fechas[0] if fechas else None
-    
-    # Ordenar bloques para procesar por filas
-    lineas_ordenadas = sorted(resultados, key=lambda r: (r[0][0][1] // 18, r[0][0][0]))
-    filas = {}
-    for r in lineas_ordenadas:
-        y_center = int(r[0][0][1] // 18)
-        filas.setdefault(y_center, []).append(r[1])
-        
-    hora_disparo_ms = None
-    
-    # Buscar la fila específica de 'Disparo' y 'Desconectado'
-    for y_idx, textos in filas.items():
-        linea = " ".join(textos).lower()
-        if ("disparo" in linea or "di/dt" in linea) and "desconectado" in linea:
-            horas_fila = re.findall(patron_hora_ms, " ".join(textos))
-            if horas_fila:
-                hora_disparo_ms = horas_fila[0]
-                break
-                
-    # Fallback si no encuentra la fila exacta: toma la primera hora con ms
-    if not hora_disparo_ms:
-        todas_horas = re.findall(patron_hora_ms, texto_completo)
-        hora_disparo_ms = todas_horas[0] if todas_horas else None
+    # 1. Extracción de texto según el formato del archivo
+    if nombre_archivo.lower().endswith('.pdf'):
+        doc = fitz.open(stream=file_bytes, filetype="pdf")
+        for page in doc:
+            texto_bruto += page.get_text("text") + "\n"
+    else:
+        # OCR para imágenes
+        reader = get_ocr_reader()
+        img = Image.open(io.BytesIO(file_bytes))
+        resultados = reader.readtext(np.array(img))
+        resultados.sort(key=lambda r: (r[0][0][1] // 15, r[0][0][0]))
+        texto_bruto = "\n".join([r[1] for r in resultados])
 
-    return fecha_encontrada, hora_disparo_ms
+    # 2. División estricta por eventos (Cada evento inicia con una fecha)
+    bloques = re.split(r'(?=\b\d{2}/\d{2}/\d{4}\b)', texto_bruto)
+    
+    fecha_encontrada = None
+    hora_encontrada = None
+
+    for bloque in bloques:
+        if not bloque.strip():
+            continue
+        
+        # Buscar la hora exacta dentro de este bloque
+        hora_match = re.search(r'\b\d{2}:\d{2}:\d{2}[,\.]\d{3}\b', bloque)
+        if not hora_match:
+            continue
+            
+        fecha = re.search(r'\b\d{2}/\d{2}/\d{4}\b', bloque).group()
+        hora = hora_match.group()
+        
+        # Validar coincidencia en la MISMA fila/bloque
+        b_limpio = bloque.lower().replace('\n', ' ').replace('|', ' ')
+        if ("disparo" in b_limpio or "di/dt" in b_limpio) and "vp: desconectado" in b_limpio:
+            fecha_encontrada = fecha
+            hora_encontrada = hora
+            break
+
+    # Fallback: Si no hay coincidencia estricta, toma el primer registro válido
+    if not fecha_encontrada:
+        fecha_fb = re.search(r'\b\d{2}/\d{2}/\d{4}\b', texto_bruto)
+        hora_fb = re.search(r'\b\d{2}:\d{2}:\d{2}[,\.]\d{3}\b', texto_bruto)
+        fecha_encontrada = fecha_fb.group() if fecha_fb else None
+        hora_encontrada = hora_fb.group() if hora_fb else None
+
+    return fecha_encontrada, hora_encontrada
 
 # =========================================================
 # COMPONENTE CANVAS BIDIRECCIONAL (SITRAS PRO)
@@ -313,7 +322,6 @@ def modal_editor_sitras(pdf_bytes):
     pix = page.get_pixmap(dpi=130)
     img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
     
-    # Renderiza el editor interactivo y recibe la imagen final en Base64
     resultado_b64 = editor_sitras_component(img_b64=img_b64, w=pix.width, h=pix.height, key="sitras_canvas_widget")
     
     if resultado_b64:
@@ -388,13 +396,13 @@ with col_form:
     # OCR: AUTO-LLENADO DESDE VICOS RSC
     # =========================================================
     with st.expander("🔍 Cargar Captura VICOS RSC (Auto-llenado)", expanded=True):
-        st.write("Sube la imagen del Libro de Eventos de SCADA para extraer Fecha y Hora (con milisegundos).")
-        img_vicos_file = st.file_uploader("Captura Libro de Eventos ALARMA (.jpg / .png)", type=["jpg", "png", "jpeg"])
+        st.write("Sube la imagen o el PDF del Libro de Eventos de SCADA para extraer Fecha y Hora (con milisegundos).")
+        img_vicos_file = st.file_uploader("Libro de Eventos ALARMA (.pdf / .jpg / .png)", type=["pdf", "jpg", "png", "jpeg"])
         
         if img_vicos_file is not None:
-            if st.button("🚀 Extraer Datos con OCR", use_container_width=True):
-                with st.spinner("Procesando imagen del SCADA..."):
-                    f_det, h_det = extraer_datos_vicos(img_vicos_file.getvalue())
+            if st.button("🚀 Extraer Datos", use_container_width=True):
+                with st.spinner("Procesando documento del SCADA..."):
+                    f_det, h_det = extraer_datos_vicos(img_vicos_file.getvalue(), img_vicos_file.name)
                     if f_det:
                         try:
                             st.session_state["fecha_ocr"] = datetime.strptime(f_det, "%d/%m/%Y").date()
