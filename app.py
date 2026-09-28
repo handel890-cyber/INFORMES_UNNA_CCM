@@ -326,6 +326,30 @@ def modal_editor_sitras(pdf_bytes):
         st.rerun()
 
 # =========================================================
+# MODAL DEL EDITOR OSCILOGRÁFICO (SIGRA)
+# =========================================================
+@st.dialog("✂️ Editor y Recorte - Registro Oscilográfico (SIGRA)", width="large")
+def modal_editor_oscilografico(pdf_bytes):
+    doc_pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
+    num_paginas = len(doc_pdf)
+    
+    # Selector de página (por defecto la página 2, índice 1, donde suele estar el gráfico SIGRA)
+    pag_idx = st.selectbox("Seleccionar página del PDF SIGRA:", range(num_paginas), index=1 if num_paginas > 1 else 0, key="select_pag_sigra")
+    
+    page = doc_pdf.load_page(pag_idx)
+    pix = page.get_pixmap(dpi=130)
+    img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
+    
+    # Renderiza el editor reutilizando el componente canvas pero apuntando a la variable oscilográfica
+    resultado_b64 = editor_sitras_component(img_b64=img_b64, w=pix.width, h=pix.height, key="oscilografico_canvas_widget")
+    
+    if resultado_b64:
+        img_bytes = base64.b64decode(resultado_b64.split(",")[1])
+        st.session_state["anexo_oscilografico_bytes"] = img_bytes
+        st.success("✅ ¡Anexo Oscilográfico adjuntado exitosamente al Word!")
+        st.rerun()
+
+# =========================================================
 # CATÁLOGO DE ALIMENTADORES
 # =========================================================
 CATALOGO_ALIMENTADORES = {
@@ -500,6 +524,16 @@ with col_form:
 
         if "anexo_sitras_bytes" in st.session_state and st.session_state["anexo_sitras_bytes"] is not None:
             st.success("✅ Anexo Sitras PRO adjuntado y visible en la vista previa del Word.")
+	st.write("---")
+        st.write("**Registro Oscilográfico (SIGRA)**")
+        pdf_osc_file = st.file_uploader("Log SIGRA (.pdf)", type=["pdf"], key="up_osc")
+        
+        if pdf_osc_file is not None:
+            if st.button("🚀 Abrir Editor de Oscilograma", use_container_width=True, key="btn_osc"):
+                modal_editor_oscilografico(pdf_osc_file.getvalue())
+
+        if "anexo_oscilografico_bytes" in st.session_state and st.session_state["anexo_oscilografico_bytes"] is not None:
+            st.success("✅ Anexo Oscilográfico adjuntado y listo en el Word.")
 
 # =========================================================
 # CONSTRUCCIÓN Y AUTO-ORDENAMIENTO DE EVENTOS
@@ -519,6 +553,7 @@ if h_cat.strip(): eventos_para_ordenar.append({"hora": h_cat.strip(), "ubicacion
 cronologia_ordenada = sorted(eventos_para_ordenar, key=lambda x: str(x["hora"]))
 
 # Variables exactas para el documento Word con milisegundos intactos
+
 hora_vicos_ap_final = st.session_state.get("hora_vicos_disparo", f"{h_disp}")
 hora_vicos_vec_final = st.session_state.get("hora_vicos_disparo_vecina", f"{h_vec}")
 
@@ -527,7 +562,10 @@ context = {
     "interruptor_vecino": datos_vec["interruptor"], "alimentador_ser_vecino": datos_vec["alimentador_ser"], "ser_vecino": datos_vec["ser"], "alimentador_vecino": datos_vec["alimentador"], "alimentador_vecino_num": datos_vec["interruptor_num"],
     "funcion_disparo_inicial": f_disp_ini, "funcion_disparo_final": f_disp_fin, "funcion_disparo_vecina_inicial": f_disp_vec_ini, "funcion_disparo_vecina_final": f_disp_vec_fin,
     "st_aperturado": st_ap, "st_vecino": st_vec, "st_zona": st_zn, "corriente": corriente_val,
-    "fecha": fecha_val, "hora_vicos_disparo": hora_vicos_ap_final, "hora_vicos_disparo_vecina": hora_vicos_vec_final, "dia": dia_val, "tiempo_entre_trenes": headway, "condicion_senales": condicion, "operacion": operacion_val, "zona": zona_manual,
+    "fecha": fecha_val, 
+    "hora_vicos_disparo": hora_vicos_ap_final, 
+    "hora_vicos_disparo_vecina": hora_vicos_vec_final, 
+    "dia": dia_val, "tiempo_entre_trenes": headway, "condicion_senales": condicion, "operacion": operacion_val, "zona": zona_manual,
     "sup_pco": sup_pco_val, "per_sub": per_sub_val, "per_cat": per_cat_val
 }
 
@@ -540,11 +578,21 @@ with col_preview:
         try:
             doc = DocxTemplate(plantilla_doc)
             
+            # Anexo Sitras PRO
             if "anexo_sitras_bytes" in st.session_state and st.session_state["anexo_sitras_bytes"] is not None:
                 img_stream = io.BytesIO(st.session_state["anexo_sitras_bytes"])
                 context["anexo_sitras"] = InlineImage(doc, img_stream, width=Mm(165))
             else:
                 context["anexo_sitras"] = ""
+
+            # 👉 AQUÍ VA EL ANEXO OSCILOGRÁFICO (SIGRA)
+            if "anexo_oscilografico_bytes" in st.session_state and st.session_state["anexo_oscilografico_bytes"] is not None:
+                img_stream_osc = io.BytesIO(st.session_state["anexo_oscilografico_bytes"])
+                context["anexo_registro_oscilografico"] = InlineImage(doc, img_stream_osc, width=Mm(165))
+            else:
+                context["anexo_registro_oscilografico"] = ""
+
+            doc.render(context)
 
             doc.render(context)
             
