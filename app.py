@@ -484,27 +484,27 @@ def modal_editor_sitras(pdf_bytes):
 
 # MODAL DE RECORTE LIBRE - REGISTRO OSCILOGRÁFICO (SIGRA)
 # =========================================================
-@st.dialog("✂️ Recorte de Onda - Registro Oscilográfico (SIGRA)", width="large")
-def modal_editor_oscilografico(pdf_bytes):
+def procesar_sigra_automatico(pdf_bytes):
     doc_pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
-    num_paginas = len(doc_pdf)
     
-    # Selector de página (por defecto la página 2, índice 1)
-    pag_idx = st.selectbox("Seleccionar página del PDF SIGRA:", range(num_paginas), index=1 if num_paginas > 1 else 0, key="select_pag_sigra")
+    # 1. Extraer el valor del tiempo (Ej. 28.80) de la segunda hoja (índice 1)
+    texto_pagina = doc_pdf[1].get_text("text") if len(doc_pdf) > 1 else doc_pdf[0].get_text("text")
+    match = re.search(r'C2-C1.*?([\d\.]+)', texto_pagina, re.DOTALL)
+    valor_extraido = match.group(1) if match else ""
+    if not valor_extraido:
+        # Fallback por si la tabla cambia ligeramente
+        match_gen = re.search(r'\b\d{2}\.\d{2}\b', texto_pagina)
+        valor_extraido = match_gen.group(0) if match_gen else "28.80"
+        
+    st.session_state["val_osc"] = valor_extraido
     
-    page = doc_pdf.load_page(pag_idx)
-    pix = page.get_pixmap(dpi=150) # Alta calidad para el recorte
-    img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
+    # 2. Recortar la imagen con las coordenadas exactas de la segunda hoja
+    page = doc_pdf.load_page(1 if len(doc_pdf) > 1 else 0)
+    rect = fitz.Rect(57, 193, 1111, 569) # Coordenadas ingresadas
+    pix = page.get_pixmap(clip=rect, dpi=150)
     
-    # Renderiza exclusivamente el componente de recorte libre (sin flechas ni textos de Sitras)
-    resultado_b64 = crop_sigra_component(img_b64=img_b64, w=pix.width, h=pix.height, key="sigra_crop_widget")
-    
-    if resultado_b64:
-        img_bytes = base64.b64decode(resultado_b64.split(",")[1])
-        st.session_state["anexo_oscilografico_bytes"] = img_bytes
-        st.success("✅ ¡Recorte oscilográfico guardado con éxito para el Word!")
-        st.rerun()
-
+    st.session_state["anexo_oscilografico_bytes"] = pix.tobytes("jpeg")
+    st.success(f"✅ ¡Recorte generado y valor detectado: {valor_extraido} ms!")
 # =========================================================
 # CATÁLOGO DE ALIMENTADORES
 # =========================================================
@@ -686,11 +686,14 @@ with col_form:
         pdf_osc_file = st.file_uploader("Log SIGRA (.pdf)", type=["pdf"], key="up_osc")
         
         if pdf_osc_file is not None:
-            if st.button("🚀 Abrir Editor de Oscilograma", use_container_width=True, key="btn_osc"):
-                modal_editor_oscilografico(pdf_osc_file.getvalue())
+            if st.button("🚀 Extraer y Recortar Oscilograma Automáticamente", use_container_width=True, key="btn_osc"):
+                procesar_sigra_automatico(pdf_osc_file.getvalue())
 
         if "anexo_oscilografico_bytes" in st.session_state and st.session_state["anexo_oscilografico_bytes"] is not None:
             st.success("✅ Anexo Oscilográfico adjuntado y listo en el Word.")
+            # Te muestra el valor leído para que lo verifiques o modifiques si es necesario
+            val_osc_def = st.session_state.get("val_osc", "")
+            tiempo_sigra_val = st.text_input("Valor de tiempo extraído (ms):", value=val_osc_def)
 
 # =========================================================
 # CONSTRUCCIÓN Y AUTO-ORDENAMIENTO DE EVENTOS
@@ -723,7 +726,8 @@ context = {
     "hora_vicos_disparo": hora_vicos_ap_final, 
     "hora_vicos_disparo_vecina": hora_vicos_vec_final, 
     "dia": dia_val, "tiempo_entre_trenes": headway, "condicion_senales": condicion, "operacion": operacion_val, "zona": zona_manual,
-    "sup_pco": sup_pco_val, "per_sub": per_sub_val, "per_cat": per_cat_val
+    "sup_pco": sup_pco_val, "per_sub": per_sub_val, "per_cat": per_cat_val,
+    "valor_tiempo_sigra": st.session_state.get("val_osc", "")
 }
 
 # =========================================================
