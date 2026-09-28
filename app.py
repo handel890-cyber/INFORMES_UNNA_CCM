@@ -69,6 +69,156 @@ def extraer_datos_vicos(file_bytes, nombre_archivo):
 # =========================================================
 # COMPONENTE CANVAS BIDIRECCIONAL (SITRAS PRO)
 # =========================================================
+# =========================================================
+# COMPONENTE DE RECORTE LIBRE (CROPPER) PARA SIGRA
+# =========================================================
+CROP_DIR = os.path.join(os.path.dirname(__file__), "crop_component")
+os.makedirs(CROP_DIR, exist_ok=True)
+CROP_HTML_PATH = os.path.join(CROP_DIR, "index.html")
+
+with open(CROP_HTML_PATH, "w", encoding="utf-8") as f:
+    f.write("""<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { margin: 0; font-family: sans-serif; background-color: #262730; color: #fff; text-align: center; }
+    #toolbar { padding: 8px; background: #1e1e24; display: flex; justify-content: center; gap: 10px; align-items: center; border-radius: 6px; margin-bottom: 8px; font-size: 13px; }
+    #instrucciones { font-weight: bold; color: #4bb4ff; }
+    #canvas-wrapper { position: relative; display: inline-block; max-height: 480px; overflow: auto; border: 2px solid #555; border-radius: 4px; }
+    canvas { display: block; cursor: crosshair; }
+    button { padding: 6px 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+    .btn-crop { background-color: #0078d4; color: white; display: none; font-size: 14px; padding: 8px 16px; }
+    .btn-reset { background-color: #555; color: white; }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <span id="instrucciones">Arrastra el mouse sobre el gráfico para recortar la zona deseada.</span>
+    <button class="btn-reset" onclick="resetCrop()">🔄 Reiniciar</button>
+  </div>
+
+  <div id="canvas-wrapper">
+    <canvas id="canvasCrop"></canvas>
+  </div>
+
+  <div style="margin-top: 10px;">
+    <button id="btnCrop" class="btn-crop" onclick="guardarRecorte()">📄 Guardar Recorte en el Word</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("canvasCrop");
+    const ctx = canvas.getContext("2d");
+    const btnCrop = document.getElementById("btnCrop");
+
+    let bgImg = new Image();
+    let isDrawing = false;
+    let startX = 0, startY = 0;
+    let rect = null;
+
+    function sendToStreamlit(val) {
+      window.parent.postMessage({
+        isStreamlitMessage: true,
+        type: "streamlit:setComponentValue",
+        value: val
+      }, "*");
+    }
+
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bgImg, 0, 0);
+
+      if (rect) {
+        ctx.strokeStyle = "#0078d4";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+        ctx.fillStyle = "rgba(0, 120, 212, 0.15)";
+        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      }
+    }
+
+    function getMousePos(evt) {
+      const cRect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / cRect.width;
+      const scaleY = canvas.height / cRect.height;
+      return {
+        x: (evt.clientX - cRect.left) * scaleX,
+        y: (evt.clientY - cRect.top) * scaleY
+      };
+    }
+
+    canvas.onmousedown = (e) => {
+      if (e.button !== 0) return;
+      const pos = getMousePos(e);
+      isDrawing = true;
+      startX = pos.x;
+      startY = pos.y;
+      rect = { x: startX, y: startY, w: 0, h: 0 };
+    };
+
+    canvas.onmousemove = (e) => {
+      if (!isDrawing) return;
+      const pos = getMousePos(e);
+      rect = {
+        x: Math.min(startX, pos.x),
+        y: Math.min(startY, pos.y),
+        w: Math.abs(pos.x - startX),
+        h: Math.abs(pos.y - startY)
+      };
+      redraw();
+    };
+
+    canvas.onmouseup = () => {
+      if (!isDrawing) return;
+      isDrawing = false;
+      if (rect && rect.w > 20 && rect.h > 10) {
+        btnCrop.style.display = "inline-block";
+      } else {
+        rect = null;
+        btnCrop.style.display = "none";
+      }
+      redraw();
+    };
+
+    function resetCrop() {
+      rect = null;
+      btnCrop.style.display = "none";
+      redraw();
+    }
+
+    function guardarRecorte() {
+      if (!rect) return;
+      btnCrop.innerText = "⏳ Procesando recorte...";
+      btnCrop.disabled = true;
+
+      // Crear un canvas temporal para extraer solo la zona recortada
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = rect.w;
+      tempCanvas.height = rect.h;
+      const tempCtx = tempCanvas.getContext("2d");
+      
+      tempCtx.drawImage(bgImg, rect.x, rect.y, rect.w, rect.h, 0, 0, rect.w, rect.h);
+      const dataUrl = tempCanvas.toDataURL("image/jpeg", 0.95);
+      sendToStreamlit(dataUrl);
+    }
+
+    window.addEventListener("message", (event) => {
+      if (event.data.type === "streamlit:render") {
+        const args = event.data.args;
+        canvas.width = args.w;
+        canvas.height = args.h;
+        bgImg.src = "data:image/jpeg;base64," + args.img_b64;
+        bgImg.onload = () => redraw();
+      }
+    });
+
+    window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1}, "*");
+    window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: 580}, "*");
+  </script>
+</body>
+</html>""")
+
+crop_sigra_component = components.declare_component("crop_sigra", path=CROP_DIR)
+
 COMPONENT_DIR = os.path.join(os.path.dirname(__file__), "editor_component")
 os.makedirs(COMPONENT_DIR, exist_ok=True)
 INDEX_HTML_PATH = os.path.join(COMPONENT_DIR, "index.html")
@@ -325,29 +475,28 @@ def modal_editor_sitras(pdf_bytes):
         st.success("✅ ¡Imagen adjuntada exitosamente al Word! Ya puedes cerrar esta ventana.")
         st.rerun()
 
+
+# MODAL DE RECORTE LIBRE - REGISTRO OSCILOGRÁFICO (SIGRA)
 # =========================================================
-# MODAL DEL EDITOR OSCILOGRÁFICO (SIGRA)
-# =========================================================
-@st.dialog("✂️ Editor y Recorte - Registro Oscilográfico (SIGRA)", width="large")
+@st.dialog("✂️ Recorte de Onda - Registro Oscilográfico (SIGRA)", width="large")
 def modal_editor_oscilografico(pdf_bytes):
     doc_pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
     num_paginas = len(doc_pdf)
     
-    # Selector para elegir la página (ej. la segunda página, índice 1)
+    # Selector de página (por defecto la página 2, índice 1)
     pag_idx = st.selectbox("Seleccionar página del PDF SIGRA:", range(num_paginas), index=1 if num_paginas > 1 else 0, key="select_pag_sigra")
     
     page = doc_pdf.load_page(pag_idx)
-    # Renderizamos en alta resolución para que al recortar no pierda nitidez
-    pix = page.get_pixmap(dpi=150)
+    pix = page.get_pixmap(dpi=150) # Alta calidad para el recorte
     img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
     
-    # Usamos el componente canvas reutilizando el widget, guardando el resultado en la variable oscilográfica
-    resultado_b64 = editor_sitras_component(img_b64=img_b64, w=pix.width, h=pix.height, key="oscilografico_canvas_widget")
+    # Renderiza exclusivamente el componente de recorte libre (sin flechas ni textos de Sitras)
+    resultado_b64 = crop_sigra_component(img_b64=img_b64, w=pix.width, h=pix.height, key="sigra_crop_widget")
     
     if resultado_b64:
         img_bytes = base64.b64decode(resultado_b64.split(",")[1])
         st.session_state["anexo_oscilografico_bytes"] = img_bytes
-        st.success("✅ ¡Anexo Oscilográfico adjuntado exitosamente al Word!")
+        st.success("✅ ¡Recorte oscilográfico guardado con éxito para el Word!")
         st.rerun()
 
 # =========================================================
