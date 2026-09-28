@@ -486,13 +486,12 @@ def modal_editor_oscilografico(pdf_bytes):
     # Selector de página (por defecto la página 2, índice 1)
     pag_idx = st.selectbox("Seleccionar página del PDF SIGRA:", range(num_paginas), index=1 if num_paginas > 1 else 0, key="select_pag_sigra")
     
-    # Dentro de modal_editor_oscilografico:
-page = doc_pdf.load_page(pag_idx)
-pix = page.get_pixmap(dpi=96)  # 👈 Cambiado a 96 para que la hoja completa se adapte a la vista
-img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
+    page = doc_pdf.load_page(pag_idx)
+    pix = page.get_pixmap(dpi=150) # Alta calidad para el recorte
+    img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
     
     # Renderiza exclusivamente el componente de recorte libre (sin flechas ni textos de Sitras)
-resultado_b64 = crop_sigra_component(img_b64=img_b64, w=pix.width, h=pix.height, key="sigra_crop_widget")
+    resultado_b64 = crop_sigra_component(img_b64=img_b64, w=pix.width, h=pix.height, key="sigra_crop_widget")
     
     if resultado_b64:
         img_bytes = base64.b64decode(resultado_b64.split(",")[1])
