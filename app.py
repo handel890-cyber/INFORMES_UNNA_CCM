@@ -474,9 +474,6 @@ with col_form:
         
         h_disp_defecto = st.session_state.get("h_disp_cronologia", "07:57:31")
         h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value=h_disp_defecto)
-        
-	
-	# Valores por defecto o extraídos por OCR para los inputs de horas
 	h_disp_def = st.session_state.get("h_disp_cronologia", "")
 	h_vec_def = st.session_state.get("h_vec_cronologia", "")
 	h_dcierre_def = st.session_state.get("h_dcierre_cronologia", "")
