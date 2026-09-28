@@ -535,7 +535,6 @@ context = {
 # =========================================================
 with col_preview:
     st.header("📄 Vista Previa Real del Documento")
-
     if plantilla_doc is not None:
         try:
             doc = DocxTemplate(plantilla_doc)
