@@ -206,15 +206,19 @@ with open(CROP_HTML_PATH, "w", encoding="utf-8") as f:
         const args = event.data.args;
         canvas.width = args.w;
         canvas.height = args.h;
+        
+        // Ajustamos el estilo del canvas para respetar las proporciones reales de la hoja horizontal
+        canvas.style.width = args.w + "px";
+        canvas.style.height = args.h + "px";
+        
         bgImg.src = "data:image/jpeg;base64," + args.img_b64;
         bgImg.onload = () => redraw();
       }
     });
 
     window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1}, "*");
-    window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: 1080}, "*");
-    window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setFrameHeight", width: 2080}, "*");
-    window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setFrameHeight", length: 2080}, "*");
+    window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: 580}, "*");
+
   </script>
 </body>
 </html>""")
