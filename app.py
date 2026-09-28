@@ -387,13 +387,10 @@ with col_form:
             plantilla_doc = plantilla_subida
 
     # =========================================================
-    # OCR: AUTO-LLENADO DESDE VICOS RSC
-    # =========================================================
-    # =========================================================
     # OCR: AUTO-LLENADO DESDE VICOS RSC (APERTURADO Y VECINO)
     # =========================================================
     with st.expander("🔍 Cargar Capturas VICOS RSC (Auto-llenado)", expanded=True):
-        st.write("Sube los registros del SCADA para extraer automáticamente fechas, horas de disparo y recierres.")
+        st.write("Sube los registros (PDF o Imagen) del SCADA para extraer automáticamente fechas, horas de disparo y recierres.")
         
         c_vicos1, c_vicos2 = st.columns(2)
         with c_vicos1:
@@ -472,33 +469,20 @@ with col_form:
     with st.expander("4. Cronología y Horas (HH:MM:SS)"):
         st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word.")
         
-        h_disp_defecto = st.session_state.get("h_disp_cronologia", "07:57:31")
-        h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value=h_disp_defecto)
-	h_disp_def = st.session_state.get("h_disp_cronologia", "")
-	h_vec_def = st.session_state.get("h_vec_cronologia", "")
-	h_dcierre_def = st.session_state.get("h_dcierre_cronologia", "")
-	h_vcierre_def = st.session_state.get("h_vcierre_cronologia", "")
-	
-	# Variables exactas para el documento Word con milisegundos intactos
-	hora_vicos_ap_final = st.session_state.get("hora_vicos_disparo", f"{h_disp},000")
-	hora_vicos_vec_final = st.session_state.get("hora_vicos_disparo_vecina", f"{h_vec},000")
+        h_disp_def = st.session_state.get("h_disp_cronologia", "07:57:31")
+        h_vec_def = st.session_state.get("h_vec_cronologia", "07:57:32")
+        h_dcierre_def = st.session_state.get("h_dcierre_cronologia", "07:57:39")
+        h_vcierre_def = st.session_state.get("h_vcierre_cronologia", "07:57:41")
 
-	context = {
-    	# ... (tus otras variables existentes) ...
-    	"fecha": fecha_val,
-    	"hora_vicos_disparo": hora_vicos_ap_final,
-    	"hora_vicos_disparo_vecina": hora_vicos_vec_final,
-    	# ...
-	}
-
-        h_vec = st.text_input("Hora disparo Vecino (SCADA):", value="")
-        h_dcierre = st.text_input("Hora recierre Aperturado:", value="")
-        h_vcierre = st.text_input("Hora recierre Vecino:", value="")
-        h_rep = st.text_input("Hora reporte CCM a PCO:", value="")
-        h_env_st = st.text_input("Hora envío solicitud ST:", value="")
-        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="")
-        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="")
-        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="")
+        h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value=h_disp_def)
+        h_vec = st.text_input("Hora disparo Vecino (SCADA):", value=h_vec_def)
+        h_dcierre = st.text_input("Hora recierre Aperturado:", value=h_dcierre_def)
+        h_vcierre = st.text_input("Hora recierre Vecino:", value=h_vcierre_def)
+        h_rep = st.text_input("Hora reporte CCM a PCO:", value="08:02:00")
+        h_env_st = st.text_input("Hora envío solicitud ST:", value="08:05:00")
+        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="08:15:00")
+        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="08:45:00")
+        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="09:10:00")
 
     with st.expander("5. Personal Involucrado"):
         sup_pco_val = st.text_input("Supervisor PCO:", value="Jesús Salguedo")
@@ -533,15 +517,16 @@ if h_cat.strip(): eventos_para_ordenar.append({"hora": h_cat.strip(), "ubicacion
 
 cronologia_ordenada = sorted(eventos_para_ordenar, key=lambda x: str(x["hora"]))
 
-# Captura de la hora con milisegundos para el informe Word (usa el OCR si existe)
-hora_vicos_final = st.session_state.get("hora_vicos_disparo_ocr", f"{h_disp},000")
+# Variables exactas para el documento Word con milisegundos intactos
+hora_vicos_ap_final = st.session_state.get("hora_vicos_disparo", f"{h_disp},000")
+hora_vicos_vec_final = st.session_state.get("hora_vicos_disparo_vecina", f"{h_vec},000")
 
 context = {
     "interruptor_aperturado": datos_ap["interruptor"], "alimentador_ser_aperturado": datos_ap["alimentador_ser"], "ser_aperturado": datos_ap["ser"], "alimentador_aperturado": datos_ap["alimentador"], "alimentador_aperturado_num": datos_ap["interruptor_num"],
     "interruptor_vecino": datos_vec["interruptor"], "alimentador_ser_vecino": datos_vec["alimentador_ser"], "ser_vecino": datos_vec["ser"], "alimentador_vecino": datos_vec["alimentador"], "alimentador_vecino_num": datos_vec["interruptor_num"],
     "funcion_disparo_inicial": f_disp_ini, "funcion_disparo_final": f_disp_fin, "funcion_disparo_vecina_inicial": f_disp_vec_ini, "funcion_disparo_vecina_final": f_disp_vec_fin,
     "st_aperturado": st_ap, "st_vecino": st_vec, "st_zona": st_zn, "corriente": corriente_val,
-    "fecha": fecha_val, "hora_vicos_disparo": hora_vicos_final, "dia": dia_val, "tiempo_entre_trenes": headway, "condicion_senales": condicion, "operacion": operacion_val, "zona": zona_manual,
+    "fecha": fecha_val, "hora_vicos_disparo": hora_vicos_ap_final, "hora_vicos_disparo_vecina": hora_vicos_vec_final, "dia": dia_val, "tiempo_entre_trenes": headway, "condicion_senales": condicion, "operacion": operacion_val, "zona": zona_manual,
     "sup_pco": sup_pco_val, "per_sub": per_sub_val, "per_cat": per_cat_val
 }
 
