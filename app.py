@@ -212,7 +212,9 @@ with open(CROP_HTML_PATH, "w", encoding="utf-8") as f:
     });
 
     window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1}, "*");
-    window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: 1080}, "*");
+    window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: 680}, "*");
+    window.parent.postMessage({isStreamlitMessage: true, type: "streamlit:setFrameHeight", width: 1080}, "*");
+
   </script>
 </body>
 </html>""")
