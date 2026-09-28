@@ -475,14 +475,33 @@ with col_form:
         h_disp_defecto = st.session_state.get("h_disp_cronologia", "07:57:31")
         h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value=h_disp_defecto)
         
-        h_vec = st.text_input("Hora disparo Vecino (SCADA):", value="07:57:32")
-        h_dcierre = st.text_input("Hora recierre Aperturado:", value="07:57:39")
-        h_vcierre = st.text_input("Hora recierre Vecino:", value="07:57:41")
-        h_rep = st.text_input("Hora reporte CCM a PCO:", value="08:02:00")
-        h_env_st = st.text_input("Hora envío solicitud ST:", value="08:05:00")
-        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="08:15:00")
-        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="08:45:00")
-        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="09:10:00")
+	
+	# Valores por defecto o extraídos por OCR para los inputs de horas
+	h_disp_def = st.session_state.get("h_disp_cronologia", "")
+	h_vec_def = st.session_state.get("h_vec_cronologia", "")
+	h_dcierre_def = st.session_state.get("h_dcierre_cronologia", "")
+	h_vcierre_def = st.session_state.get("h_vcierre_cronologia", "")
+	
+	# Variables exactas para el documento Word con milisegundos intactos
+	hora_vicos_ap_final = st.session_state.get("hora_vicos_disparo", f"{h_disp},000")
+	hora_vicos_vec_final = st.session_state.get("hora_vicos_disparo_vecina", f"{h_vec},000")
+
+	context = {
+    	# ... (tus otras variables existentes) ...
+    	"fecha": fecha_val,
+    	"hora_vicos_disparo": hora_vicos_ap_final,
+    	"hora_vicos_disparo_vecina": hora_vicos_vec_final,
+    	# ...
+	}
+
+        h_vec = st.text_input("Hora disparo Vecino (SCADA):", value="")
+        h_dcierre = st.text_input("Hora recierre Aperturado:", value="")
+        h_vcierre = st.text_input("Hora recierre Vecino:", value="")
+        h_rep = st.text_input("Hora reporte CCM a PCO:", value="")
+        h_env_st = st.text_input("Hora envío solicitud ST:", value="")
+        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="")
+        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="")
+        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="")
 
     with st.expander("5. Personal Involucrado"):
         sup_pco_val = st.text_input("Supervisor PCO:", value="Jesús Salguedo")
