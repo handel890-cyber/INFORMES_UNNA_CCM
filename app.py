@@ -556,9 +556,24 @@ with col_preview:
             if tabla_cronologia is not None:
                 for evento in cronologia_ordenada:
                     fila = tabla_cronologia.add_row()
+                    
+                    # Asignar textos
                     fila.cells[0].text = str(evento["hora"])
                     fila.cells[1].text = str(evento["ubicacion"])
                     fila.cells[2].text = str(evento["descripcion"])
+                    
+                    # Aplicar formato Arial 9 y quitar sangría a cada celda de la fila nueva
+                    for cell in fila.cells:
+                        for paragraph in cell.paragraphs:
+                            # Quitar sangría de primera línea o espacios raros
+                            paragraph.paragraph_format.first_line_indent = 0
+                            paragraph.paragraph_format.left_indent = 0
+                            paragraph.paragraph_format.space_after = Mm(2)
+                            paragraph.paragraph_format.space_before = Mm(2)
+                            
+                            for run in paragraph.runs:
+                                run.font.name = 'Arial'
+                                run.font.size = Pt(9)
             
             buffer = io.BytesIO()
             doc.save(buffer)
