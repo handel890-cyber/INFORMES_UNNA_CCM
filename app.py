@@ -524,9 +524,9 @@ with col_form:
 
         if "anexo_sitras_bytes" in st.session_state and st.session_state["anexo_sitras_bytes"] is not None:
             st.success("✅ Anexo Sitras PRO adjuntado y visible en la vista previa del Word.")
-	st.write("---")
-        st.write("**Registro Oscilográfico (SIGRA)**")
-        pdf_osc_file = st.file_uploader("Log SIGRA (.pdf)", type=["pdf"], key="up_osc")
+		st.write("---")
+        	st.write("**Registro Oscilográfico (SIGRA)**")
+        	pdf_osc_file = st.file_uploader("Log SIGRA (.pdf)", type=["pdf"], key="up_osc")
         
         if pdf_osc_file is not None:
             if st.button("🚀 Abrir Editor de Oscilograma", use_container_width=True, key="btn_osc"):
