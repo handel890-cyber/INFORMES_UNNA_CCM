@@ -492,7 +492,7 @@ pix = page.get_pixmap(dpi=96)  # 👈 Cambiado a 96 para que la hoja completa se
 img_b64 = base64.b64encode(pix.tobytes("jpeg")).decode("utf-8")
     
     # Renderiza exclusivamente el componente de recorte libre (sin flechas ni textos de Sitras)
-    resultado_b64 = crop_sigra_component(img_b64=img_b64, w=pix.width, h=pix.height, key="sigra_crop_widget")
+resultado_b64 = crop_sigra_component(img_b64=img_b64, w=pix.width, h=pix.height, key="sigra_crop_widget")
     
     if resultado_b64:
         img_bytes = base64.b64decode(resultado_b64.split(",")[1])
