@@ -469,25 +469,25 @@ with col_form:
     with st.expander("4. Cronología y Horas (HH:MM:SS,mmm)"):
         st.info("💡 Las filas se reordenarán e insertarán automáticamente en la tabla de Word con milisegundos.")
         
-        h_disp_def = st.session_state.get("h_disp_cronologia", "07:57:31,375")
-        h_vec_def = st.session_state.get("h_vec_cronologia", "07:57:32,000")
-        h_dcierre_def = st.session_state.get("h_dcierre_cronologia", "07:57:39,156")
-        h_vcierre_def = st.session_state.get("h_vcierre_cronologia", "07:57:41,000")
+        h_disp_def = st.session_state.get("h_disp_cronologia", "")
+        h_vec_def = st.session_state.get("h_vec_cronologia", "")
+        h_dcierre_def = st.session_state.get("h_dcierre_cronologia", "")
+        h_vcierre_def = st.session_state.get("h_vcierre_cronologia", "")
 
         h_disp = st.text_input("Hora disparo Aperturado (SCADA):", value=h_disp_def)
         h_vec = st.text_input("Hora disparo Vecino (SCADA):", value=h_vec_def)
         h_dcierre = st.text_input("Hora recierre Aperturado:", value=h_dcierre_def)
         h_vcierre = st.text_input("Hora recierre Vecino:", value=h_vcierre_def)
-        h_rep = st.text_input("Hora reporte CCM a PCO:", value="08:02:00,000")
-        h_env_st = st.text_input("Hora envío solicitud ST:", value="08:05:00,000")
-        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="08:15:00,000")
-        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="08:45:00,000")
-        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="09:10:00,000")
+        h_rep = st.text_input("Hora reporte CCM a PCO:", value="")
+        h_env_st = st.text_input("Hora envío solicitud ST:", value="")
+        h_foto_disp = st.text_input("Hora foto Técnico Subestaciones de SER Disparo:", value="")
+        h_foto_vec = st.text_input("Hora foto Técnico Subestaciones SER Vecino:", value="")
+        h_cat = st.text_input("Hora informe Técnico Catenaria:", value="")
 
     with st.expander("5. Personal Involucrado"):
-        sup_pco_val = st.text_input("Supervisor PCO:", value="Jesús Salguedo")
-        per_sub_val = st.text_input("Personal Subestaciones:", value="Carlos Morales")
-        per_cat_val = st.text_input("Personal Catenarias:", value="Luis Vargas")
+        sup_pco_val = st.text_input("Supervisor PCO:", value="")
+        per_sub_val = st.text_input("Personal Subestaciones:", value="")
+        per_cat_val = st.text_input("Personal Catenarias:", value="")
 
     with st.expander("6. Anexos y Gráficos", expanded=True):
         st.write("Sube el PDF para abrir el editor visual de Sitras PRO en tiempo real.")
