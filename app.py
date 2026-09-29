@@ -647,7 +647,6 @@ with col_form:
         sel_aperturado = st.selectbox("Subestación / Celda Aperturada:", opciones_aperturado, index=0)
         datos_ap = CATALOGO_ALIMENTADORES[sel_aperturado]
         zona_detectada = datos_ap["zona"]
-
         opciones_vecino_filtradas = [
             k for k, v in CATALOGO_ALIMENTADORES.items() 
             if v["zona"] == zona_detectada and k != sel_aperturado
@@ -668,12 +667,12 @@ with col_form:
         f_disp_vec_ini = "Disparo por S/E vecina"
         f_disp_vec_fin = "Arrastre desde SSEE colateral activo"
         c_st1, c_st2, c_st3 = st.columns(3)
-        st_ap = c_st1.text_input("ST Aperturado:", value="1404241")
-        st_vec = c_st2.text_input("ST Vecino:", value="1404242")
-        st_zn = c_st3.text_input("ST Zona:", value="1404245")
+        st_ap = c_st1.text_input("ST Aperturado:", value="")
+        st_vec = c_st2.text_input("ST Vecino:", value="")
+        st_zn = c_st3.text_input("ST Zona:", value="")
         
         # Lee la corriente guardada por el archivo Histórico
-        corr_sitras_def = st.session_state.get("corriente_sitras_extraida", "2450")
+        corr_sitras_def = st.session_state.get("corriente_sitras_extraida", "")
         corriente_val = st.text_input("Corriente registrada (A):", value=corr_sitras_def)
 
     with st.expander("3. Datos de Operación"):
