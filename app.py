@@ -66,6 +66,27 @@ def extraer_datos_vicos(file_bytes, nombre_archivo):
 
     return fecha_encontrada, hora_disparo, hora_recierre
 
+def extraer_datos_sitras(pdf_bytes):
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    texto_total = ""
+    for page in doc:
+        texto_total += page.get_text("text") + "\n"
+
+    # Busca la línea de evento que contenga "tripping", capturando la hora, el evento y el valor
+    # Ejemplo de línea a encontrar: "104760 | 3162 | 2026-07-20 18:54:39.902 | C/G I max tripping | 6000 A | Q | T"
+    match = re.search(r'\d{4}-\d{2}-\d{2}\s(\d{2}:\d{2}:\d{2}\.\d{3}).*?(I max tripping|di/dt tripping|tripping).*?(\d+\s*A)', texto_total, re.IGNORECASE)
+    
+    hora_sitras = None
+    funcion_sitras = None
+    corriente_sitras = None
+
+    if match:
+        hora_sitras = match.group(1).replace(".", ",") # Cambiamos el punto por coma para ms
+        funcion_sitras = match.group(2).strip()
+        corriente_sitras = match.group(3).replace("A", "").strip()
+
+    return hora_sitras, funcion_sitras, corriente_sitras
+
 # =========================================================
 # COMPONENTE CANVAS BIDIRECCIONAL (SITRAS PRO)
 # =========================================================
@@ -603,6 +624,23 @@ with col_form:
 
                 st.success("✅ ¡Datos extraídos correctamente con milisegundos de los reportes SCADA!")
                 st.rerun()
+# =========================================================
+    # OCR: AUTO-LLENADO DESDE HISTÓRICO SITRAS PRO
+    # =========================================================
+    with st.expander("🔍 Cargar Histórico Sitras PRO (Auto-llenado)", expanded=True):
+        st.write("Sube el archivo 'HISTORICO APERTURA' para extraer la función de disparo y corriente máxima.")
+        pdf_historico_ap = st.file_uploader("Histórico Apertura (.pdf)", type=["pdf"], key="up_hist_ap")
+        
+        if pdf_historico_ap is not None:
+            if st.button("🔍 Extraer Datos del Histórico", use_container_width=True):
+                h_sitras, func_sitras, corr_sitras = extraer_datos_sitras(pdf_historico_ap.getvalue())
+                if func_sitras:
+                    st.session_state["funcion_sitras_extraida"] = func_sitras
+                if corr_sitras:
+                    st.session_state["corriente_sitras_extraida"] = corr_sitras
+                if h_sitras or func_sitras:
+                    st.success(f"✅ Datos extraídos: Función: {func_sitras} | Corriente: {corr_sitras} A | Hora: {h_sitras}")
+                    st.rerun()
 
     with st.expander("1. Selección de Equipos (Filtro por Zona)", expanded=True):
         opciones_aperturado = list(CATALOGO_ALIMENTADORES.keys())
@@ -622,14 +660,21 @@ with col_form:
 
     with st.expander("2. Funciones de Protección y ST"):
         f_disp_ini = st.text_input("Función SCADA Aperturado:", value="Disparo instantáneo Disparador di/dt")
-        f_disp_fin = st.text_input("Función Relé Aperturado:", value="Disparo Imax")
+        
+        # Lee la variable de sesión guardada por el archivo Histórico
+        func_sitras_def = st.session_state.get("funcion_sitras_extraida", "Disparo Imax")
+        f_disp_fin = st.text_input("Función Relé Aperturado:", value=func_sitras_def)
+        
         f_disp_vec_ini = "Disparo por S/E vecina"
         f_disp_vec_fin = "Arrastre desde SSEE colateral activo"
         c_st1, c_st2, c_st3 = st.columns(3)
         st_ap = c_st1.text_input("ST Aperturado:", value="1404241")
         st_vec = c_st2.text_input("ST Vecino:", value="1404242")
         st_zn = c_st3.text_input("ST Zona:", value="1404245")
-        corriente_val = st.text_input("Corriente registrada (A):", value="2450")
+        
+        # Lee la corriente guardada por el archivo Histórico
+        corr_sitras_def = st.session_state.get("corriente_sitras_extraida", "2450")
+        corriente_val = st.text_input("Corriente registrada (A):", value=corr_sitras_def)
 
     with st.expander("3. Datos de Operación"):
         c_op1, c_op2 = st.columns(2)
