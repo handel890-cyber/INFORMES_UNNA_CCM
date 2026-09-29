@@ -643,7 +643,7 @@ with col_form:
         c_op2.text_input("Día (Automático):", value=dia_val, disabled=True)
         
         c_op3, c_op4 = st.columns(2)
-        headway = c_op3.text_input("Headway (min):", value="3")
+        headway = c_op3.text_input("Headway (min):", value="")
         condicion = c_op4.selectbox("Condición Señales:", ["Señales encendidas", "Señales apagadas"])
         c_op5, c_op6 = st.columns(2)
         operacion_val = c_op5.selectbox("Horario Operación:", ["Hora pico", "Hora valle"])
@@ -718,6 +718,7 @@ cronologia_ordenada = sorted(eventos_para_ordenar, key=lambda x: str(x["hora"]))
 
 hora_vicos_ap_final = st.session_state.get("hora_vicos_disparo", f"{h_disp}")
 hora_vicos_vec_final = st.session_state.get("hora_vicos_disparo_vecina", f"{h_vec}")
+hay_sigra = True if st.session_state.get("anexo_oscilografico_bytes") else False
 
 context = {
     "interruptor_aperturado": datos_ap["interruptor"], "alimentador_ser_aperturado": datos_ap["alimentador_ser"], "ser_aperturado": datos_ap["ser"], "alimentador_aperturado": datos_ap["alimentador"], "alimentador_aperturado_num": datos_ap["interruptor_num"],
@@ -729,7 +730,8 @@ context = {
     "hora_vicos_disparo_vecina": hora_vicos_vec_final, 
     "dia": dia_val, "tiempo_entre_trenes": headway, "condicion_senales": condicion, "operacion": operacion_val, "zona": zona_manual,
     "sup_pco": sup_pco_val, "per_sub": per_sub_val, "per_cat": per_cat_val,
-    "valor_tiempo_sigra": st.session_state.get("val_osc", "")
+    "valor_tiempo_sigra": st.session_state.get("val_osc", ""),
+    "tiene_sigra": hay_sigra
 }
 
 # =========================================================
