@@ -265,6 +265,9 @@ with open(CROP_HTML_PATH, "w", encoding="utf-8") as f:
 
 crop_sigra_component = components.declare_component("crop_sigra", path=CROP_DIR)
 
+# =========================================================
+# COMPONENTE CANVAS BIDIRECCIONAL (SITRAS PRO)
+# =========================================================
 COMPONENT_DIR = os.path.join(os.path.dirname(__file__), "editor_component")
 os.makedirs(COMPONENT_DIR, exist_ok=True)
 INDEX_HTML_PATH = os.path.join(COMPONENT_DIR, "index.html")
@@ -287,7 +290,7 @@ with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
 </head>
 <body>
   <div id="toolbar">
-    <span id="instrucciones">Paso 1: Arrastra el mouse para encuadrar "Función de disparo".</span>
+    <span id="instrucciones">Paso 1: Arrastra el mouse para encuadrar "Función de disparo" (Buscar PID: 3162, 3164 o 3168)</span>
     <button class="btn-undo" onclick="deshacer()">↩ Deshacer (Clic Derecho)</button>
     <button class="btn-reset" onclick="resetCanvas()">🔄 Reiniciar</button>
   </div>
@@ -311,6 +314,13 @@ with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
       "Función de disparo",
       "Apertura automática del interruptor",
       "Re-cierre exitoso del interruptor"
+    ];
+    
+    // Agregamos las pistas PID para cada paso
+    const ayudas_pid = [
+      "(Buscar PID: 3162, 3164 o 3168)",
+      "(Buscar PID: 3135)",
+      "(Buscar PID: 3136)"
     ];
 
     let paso = 0; 
@@ -390,13 +400,13 @@ with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
       if (modo === "CLICK_POS") {
         currentRect = null;
         modo = "RECT";
-        instruc.innerText = `Paso ${paso + 1}: Arrastra el mouse para encuadrar "${eventos[paso]}"`;
+        instruc.innerText = `Paso ${paso + 1}: Arrastra el mouse para encuadrar "${eventos[paso]}" ${ayudas_pid[paso]}`;
       } else if (anotaciones.length > 0) {
         anotaciones.pop();
         paso--;
         modo = "RECT";
         btnWord.style.display = "none";
-        instruc.innerText = `Paso ${paso + 1}: Arrastra el mouse para encuadrar "${eventos[paso]}"`;
+        instruc.innerText = `Paso ${paso + 1}: Arrastra el mouse para encuadrar "${eventos[paso]}" ${ayudas_pid[paso]}`;
       }
       redraw();
     }
@@ -435,7 +445,7 @@ with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
 
         if (paso < 3) {
           modo = "RECT";
-          instruc.innerText = `Paso ${paso + 1}: Arrastra el mouse para encuadrar "${eventos[paso]}"`;
+          instruc.innerText = `Paso ${paso + 1}: Arrastra el mouse para encuadrar "${eventos[paso]}" ${ayudas_pid[paso]}`;
         } else {
           instruc.innerText = "✅ ¡Listo! Presiona el botón azul para colocar la imagen en el Word.";
           btnWord.style.display = "inline-block";
@@ -474,7 +484,7 @@ with open(INDEX_HTML_PATH, "w", encoding="utf-8") as f:
       currentRect = null;
       anotaciones = [];
       btnWord.style.display = "none";
-      instruc.innerText = `Paso 1: Arrastra el mouse para encuadrar "${eventos[0]}"`;
+      instruc.innerText = `Paso 1: Arrastra el mouse para encuadrar "${eventos[0]}" ${ayudas_pid[0]}`;
       redraw();
     }
 
