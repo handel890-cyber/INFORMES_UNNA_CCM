@@ -72,18 +72,17 @@ def extraer_datos_sitras(pdf_bytes):
     for page in doc:
         texto_total += page.get_text("text") + "\n"
 
-    # Se agrega re.DOTALL para que .*? pueda leer a través de los saltos de línea (\n) de la tabla
-    match = re.search(r'\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2}:\d{2}\.\d{3}).*?(I max tripping|di/dt tripping|tripping).*?(\d+\s*A)', texto_total, re.IGNORECASE | re.DOTALL)
+    # Busca la hora, seguida de cerca por "tripping" y luego un número con la letra A
+    match = re.search(r'(\d{2}:\d{2}:\d{2}\.\d{3})[\s\S]{0,100}?(I max tripping|di/dt tripping|tripping)[\s\S]{0,50}?(\d+)\s*A', texto_total, re.IGNORECASE)
     
     hora_sitras = None
     funcion_sitras = None
     corriente_sitras = None
 
     if match:
-        hora_sitras = match.group(1).replace(".", ",") # Cambiamos el punto por coma para ms
+        hora_sitras = match.group(1).replace(".", ",")
         funcion_sitras = match.group(2).strip()
-        # Quitamos la 'A', los espacios en blanco, y limpiamos el valor
-        corriente_sitras = match.group(3).upper().replace("A", "").strip()
+        corriente_sitras = match.group(3).strip()
 
     return hora_sitras, funcion_sitras, corriente_sitras
 
@@ -634,10 +633,13 @@ with col_form:
         if pdf_historico_ap is not None:
             if st.button("🔍 Extraer Datos del Histórico", use_container_width=True):
                 h_sitras, func_sitras, corr_sitras = extraer_datos_sitras(pdf_historico_ap.getvalue())
+                
+                # Guardamos directamente en la 'key' de los inputs para forzar el cambio
                 if func_sitras:
-                    st.session_state["funcion_sitras_extraida"] = func_sitras
+                    st.session_state["input_func_rele"] = func_sitras
                 if corr_sitras:
-                    st.session_state["corriente_sitras_extraida"] = corr_sitras
+                    st.session_state["input_corriente"] = corr_sitras
+                    
                 if h_sitras or func_sitras:
                     st.success(f"✅ Datos extraídos: Función: {func_sitras} | Corriente: {corr_sitras} A | Hora: {h_sitras}")
                     st.rerun()
@@ -660,9 +662,14 @@ with col_form:
     with st.expander("2. Funciones de Protección y ST"):
         f_disp_ini = st.text_input("Función SCADA Aperturado:", value="Disparo instantáneo Disparador di/dt")
         
-        # Lee la variable de sesión guardada por el archivo Histórico
-        func_sitras_def = st.session_state.get("funcion_sitras_extraida", "Disparo Imax")
-        f_disp_fin = st.text_input("Función Relé Aperturado:", value=func_sitras_def)
+        # Inicializamos las variables si están vacías
+        if "input_func_rele" not in st.session_state:
+            st.session_state["input_func_rele"] = "Disparo Imax"
+        if "input_corriente" not in st.session_state:
+            st.session_state["input_corriente"] = ""
+
+        # Usamos key= en lugar de value=
+        f_disp_fin = st.text_input("Función Relé Aperturado:", key="input_func_rele")
         
         f_disp_vec_ini = "Disparo por S/E vecina"
         f_disp_vec_fin = "Arrastre desde SSEE colateral activo"
@@ -671,9 +678,8 @@ with col_form:
         st_vec = c_st2.text_input("ST Vecino:", value="")
         st_zn = c_st3.text_input("ST Zona:", value="")
         
-        # Lee la corriente guardada por el archivo Histórico
-        corr_sitras_def = st.session_state.get("corriente_sitras_extraida", "")
-        corriente_val = st.text_input("Corriente registrada (A):", value=corr_sitras_def)
+        # Usamos key= en lugar de value=
+        corriente_val = st.text_input("Corriente registrada (A):", key="input_corriente")
 
     with st.expander("3. Datos de Operación"):
         c_op1, c_op2 = st.columns(2)
