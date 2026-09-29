@@ -69,11 +69,17 @@ def extraer_datos_vicos(file_bytes, nombre_archivo):
 def extraer_datos_sitras(pdf_bytes):
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     texto_total = ""
+    
+    # 1. Reconstruir el texto visualmente (fila por fila)
     for page in doc:
-        texto_total += page.get_text("text") + "\n"
+        words = page.get_text("words")
+        # words contiene: (x0, y0, x1, y1, "texto", block_no, line_no, word_no)
+        # Ordenamos las palabras por su posición vertical (agrupadas cada 5 píxeles) y luego horizontal
+        words.sort(key=lambda w: (round(w[1] / 5) * 5, w[0]))
+        texto_total += " ".join([w[4] for w in words]) + "\n"
 
-    # Busca la hora, seguida de cerca por "tripping" y luego un número con la letra A
-    match = re.search(r'(\d{2}:\d{2}:\d{2}\.\d{3})[\s\S]{0,100}?(I max tripping|di/dt tripping|tripping)[\s\S]{0,50}?(\d+)\s*A', texto_total, re.IGNORECASE)
+    # 2. Buscar patrón principal en el texto ya ordenado
+    match = re.search(r'(\d{2}:\d{2}:\d{2}[\.,]\d{3}).*?(I\s*max\s*tripping|di/dt\s*tripping|tripping).*?(\d+)\s*A', texto_total, re.IGNORECASE)
     
     hora_sitras = None
     funcion_sitras = None
@@ -83,6 +89,26 @@ def extraer_datos_sitras(pdf_bytes):
         hora_sitras = match.group(1).replace(".", ",")
         funcion_sitras = match.group(2).strip()
         corriente_sitras = match.group(3).strip()
+    else:
+        # 3. Respaldo (Fallback) agresivo: si no están en la misma línea, busca los valores globales
+        m_hora = re.search(r'(\d{2}:\d{2}:\d{2}[\.,]\d{3})', texto_total)
+        m_func = re.search(r'(I\s*max\s*tripping|di/dt\s*tripping|tripping)', texto_total, re.IGNORECASE)
+        m_corrientes = re.findall(r'(\d+)\s*A', texto_total) # Encuentra todas las corrientes
+        
+        if m_hora: 
+            hora_sitras = m_hora.group(1).replace(".", ",")
+        if m_func: 
+            funcion_sitras = m_func.group(1).strip()
+        if m_corrientes: 
+            # El disparo "tripping" siempre es la corriente máxima, superior a los "warnings"
+            corriente_sitras = str(max([int(c) for c in m_corrientes]))
+
+    # 4. Formatear el nombre para el reporte Word
+    if funcion_sitras:
+        if "I max" in funcion_sitras:
+            funcion_sitras = "Disparo Imax"
+        elif "di/dt" in funcion_sitras:
+            funcion_sitras = "Disparo di/dt"
 
     return hora_sitras, funcion_sitras, corriente_sitras
 
@@ -634,15 +660,16 @@ with col_form:
             if st.button("🔍 Extraer Datos del Histórico", use_container_width=True):
                 h_sitras, func_sitras, corr_sitras = extraer_datos_sitras(pdf_historico_ap.getvalue())
                 
-                # Guardamos directamente en la 'key' de los inputs para forzar el cambio
-                if func_sitras:
-                    st.session_state["input_func_rele"] = func_sitras
-                if corr_sitras:
-                    st.session_state["input_corriente"] = corr_sitras
-                    
-                if h_sitras or func_sitras:
+                if func_sitras or corr_sitras:
+                    if func_sitras:
+                        st.session_state["input_func_rele"] = func_sitras
+                    if corr_sitras:
+                        st.session_state["input_corriente"] = corr_sitras
+                        
                     st.success(f"✅ Datos extraídos: Función: {func_sitras} | Corriente: {corr_sitras} A | Hora: {h_sitras}")
                     st.rerun()
+                else:
+                    st.error("❌ No se detectó la palabra 'tripping' ni valores de corriente en el documento.")
 
     with st.expander("1. Selección de Equipos (Filtro por Zona)", expanded=True):
         opciones_aperturado = list(CATALOGO_ALIMENTADORES.keys())
@@ -660,6 +687,7 @@ with col_form:
         datos_vec = CATALOGO_ALIMENTADORES[sel_vecino]
 
     with st.expander("2. Funciones de Protección y ST"):
+
         f_disp_ini = st.text_input("Función SCADA Aperturado:", value="Disparo instantáneo Disparador di/dt")
         
         # Inicializamos las variables si están vacías
