@@ -653,27 +653,6 @@ with col_form:
 
                 st.success("✅ ¡Datos extraídos correctamente con milisegundos de los reportes SCADA!")
                 st.rerun()
-# =========================================================
-    # OCR: AUTO-LLENADO DESDE HISTÓRICO SITRAS PRO
-    # =========================================================
-    with st.expander("🔍 Cargar Histórico Sitras PRO (Auto-llenado)", expanded=True):
-        st.write("Sube el archivo 'HISTORICO APERTURA' para extraer la función de disparo y corriente máxima.")
-        pdf_historico_ap = st.file_uploader("Histórico Apertura (.pdf)", type=["pdf"], key="up_hist_ap")
-        
-        if pdf_historico_ap is not None:
-            if st.button("🔍 Extraer Datos del Histórico", use_container_width=True):
-                h_sitras, func_sitras, corr_sitras = extraer_datos_sitras(pdf_historico_ap.getvalue())
-                
-                if func_sitras or corr_sitras:
-                    if func_sitras:
-                        st.session_state["input_func_rele"] = func_sitras
-                    if corr_sitras:
-                        st.session_state["input_corriente"] = corr_sitras
-                        
-                    st.success(f"✅ Datos extraídos: Función: {func_sitras} | Corriente: {corr_sitras} A | Hora: {h_sitras}")
-                    st.rerun()
-                else:
-                    st.error("❌ No se detectó la palabra 'tripping' ni valores de corriente en el documento.")
 
     with st.expander("1. Selección de Equipos (Filtro por Zona)", expanded=True):
         opciones_aperturado = list(CATALOGO_ALIMENTADORES.keys())
@@ -696,12 +675,16 @@ with col_form:
         
         # Inicializamos las variables si están vacías
         if "input_func_rele" not in st.session_state:
-            st.session_state["input_func_rele"] = "Disparo Imax"
+            st.session_state["input_func_rele"] = ""
         if "input_corriente" not in st.session_state:
             st.session_state["input_corriente"] = ""
 
         # Usamos key= en lugar de value=
-        f_disp_fin = st.text_input("Función Relé Aperturado:", key="input_func_rele")
+        f_disp_fin = st.selectbox(
+            "Función Relé Aperturado:", 
+            options=["Disparo Imax", "Disparo Imax_rev", "Disparo di/dt"],
+            key="input_func_rele"
+        )
         
         f_disp_vec_ini = "Disparo por S/E vecina"
         f_disp_vec_fin = "Arrastre desde SSEE colateral activo"
