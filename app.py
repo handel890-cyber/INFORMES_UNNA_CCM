@@ -72,9 +72,8 @@ def extraer_datos_sitras(pdf_bytes):
     for page in doc:
         texto_total += page.get_text("text") + "\n"
 
-    # Busca la línea de evento que contenga "tripping", capturando la hora, el evento y el valor
-    # Ejemplo de línea a encontrar: "104760 | 3162 | 2026-07-20 18:54:39.902 | C/G I max tripping | 6000 A | Q | T"
-    match = re.search(r'\d{4}-\d{2}-\d{2}\s(\d{2}:\d{2}:\d{2}\.\d{3}).*?(I max tripping|di/dt tripping|tripping).*?(\d+\s*A)', texto_total, re.IGNORECASE)
+    # Se agrega re.DOTALL para que .*? pueda leer a través de los saltos de línea (\n) de la tabla
+    match = re.search(r'\d{4}-\d{2}-\d{2}\s+(\d{2}:\d{2}:\d{2}\.\d{3}).*?(I max tripping|di/dt tripping|tripping).*?(\d+\s*A)', texto_total, re.IGNORECASE | re.DOTALL)
     
     hora_sitras = None
     funcion_sitras = None
@@ -83,7 +82,8 @@ def extraer_datos_sitras(pdf_bytes):
     if match:
         hora_sitras = match.group(1).replace(".", ",") # Cambiamos el punto por coma para ms
         funcion_sitras = match.group(2).strip()
-        corriente_sitras = match.group(3).replace("A", "").strip()
+        # Quitamos la 'A', los espacios en blanco, y limpiamos el valor
+        corriente_sitras = match.group(3).upper().replace("A", "").strip()
 
     return hora_sitras, funcion_sitras, corriente_sitras
 
