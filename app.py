@@ -70,45 +70,54 @@ def extraer_datos_sitras(pdf_bytes):
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     texto_total = ""
     
-    # 1. Reconstruir el texto visualmente (fila por fila)
+    # 1. Intentar extraer texto nativo primero
     for page in doc:
-        words = page.get_text("words")
-        # words contiene: (x0, y0, x1, y1, "texto", block_no, line_no, word_no)
-        # Ordenamos las palabras por su posición vertical (agrupadas cada 5 píxeles) y luego horizontal
-        words.sort(key=lambda w: (round(w[1] / 5) * 5, w[0]))
-        texto_total += " ".join([w[4] for w in words]) + "\n"
+        texto_total += page.get_text("text") + "\n"
+        
+    # 2. Si el texto extraído está vacío (es un PDF escaneado/imagen), activamos EasyOCR
+    if len(texto_total.strip()) < 20:
+        texto_total = ""
+        reader = get_ocr_reader() # Reutilizamos tu modelo OCR ya cargado
+        for page in doc:
+            # Convertimos la página del PDF a imagen con buena resolución
+            pix = page.get_pixmap(dpi=200)
+            img = Image.open(io.BytesIO(pix.tobytes("jpeg")))
+            # Pasamos el OCR
+            resultados = reader.readtext(np.array(img))
+            # Ordenamos de arriba hacia abajo y de izquierda a derecha
+            resultados.sort(key=lambda r: (round(r[0][0][1] / 10) * 10, r[0][0][0]))
+            texto_total += " ".join([r[1] for r in resultados]) + "\n"
 
-    # 2. Buscar patrón principal en el texto ya ordenado
-    match = re.search(r'(\d{2}:\d{2}:\d{2}[\.,]\d{3}).*?(I\s*max\s*tripping|di/dt\s*tripping|tripping).*?(\d+)\s*A', texto_total, re.IGNORECASE)
+    # 3. Limpiamos y estandarizamos el texto para la búsqueda (todo a minúsculas)
+    t_limpio = texto_total.lower()
+    
+    # Buscamos la hora, la función y todas las corrientes usando Regex tolerante a errores de OCR
+    m_hora = re.search(r'(\d{2}:\d{2}:\d{2}[\.,]\d{3})', t_limpio)
+    m_func = re.search(r'(i\s*max\s*tripping|imax\s*tripping|di/dt\s*tripping|tripping)', t_limpio)
+    # Busca números de 3 a 5 dígitos seguidos opcionalmente por un espacio y la letra 'a'
+    m_corrientes = re.findall(r'(\d{3,5})\s*a\b', t_limpio) 
     
     hora_sitras = None
     funcion_sitras = None
     corriente_sitras = None
 
-    if match:
-        hora_sitras = match.group(1).replace(".", ",")
-        funcion_sitras = match.group(2).strip()
-        corriente_sitras = match.group(3).strip()
-    else:
-        # 3. Respaldo (Fallback) agresivo: si no están en la misma línea, busca los valores globales
-        m_hora = re.search(r'(\d{2}:\d{2}:\d{2}[\.,]\d{3})', texto_total)
-        m_func = re.search(r'(I\s*max\s*tripping|di/dt\s*tripping|tripping)', texto_total, re.IGNORECASE)
-        m_corrientes = re.findall(r'(\d+)\s*A', texto_total) # Encuentra todas las corrientes
+    # 4. Asignamos los valores encontrados
+    if m_hora:
+        hora_sitras = m_hora.group(1).replace(".", ",")
         
-        if m_hora: 
-            hora_sitras = m_hora.group(1).replace(".", ",")
-        if m_func: 
-            funcion_sitras = m_func.group(1).strip()
-        if m_corrientes: 
-            # El disparo "tripping" siempre es la corriente máxima, superior a los "warnings"
-            corriente_sitras = str(max([int(c) for c in m_corrientes]))
-
-    # 4. Formatear el nombre para el reporte Word
-    if funcion_sitras:
-        if "I max" in funcion_sitras:
+    if m_func:
+        func_raw = m_func.group(1)
+        if "i max" in func_raw or "imax" in func_raw:
             funcion_sitras = "Disparo Imax"
-        elif "di/dt" in funcion_sitras:
+        elif "di/dt" in func_raw:
             funcion_sitras = "Disparo di/dt"
+        else:
+            funcion_sitras = "Disparo ImaxRev"
+            
+    if m_corrientes:
+        # El OCR capturará todos los "Warning" y el "Tripping".
+        # La corriente de disparo siempre es numéricamente la más alta.
+        corriente_sitras = str(max([int(c) for c in m_corrientes]))
 
     return hora_sitras, funcion_sitras, corriente_sitras
 
