@@ -70,42 +70,38 @@ def extraer_datos_sitras(pdf_bytes):
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     texto_total = ""
     
-    # 1. Leemos el texto nativo y lo ordenamos por coordenadas visuales para reconstruir las filas
+    # 1. Intento rápido sin gastar RAM
     for page in doc:
-        words = page.get_text("words")
-        # words contiene: (x0, y0, x1, y1, "texto", ...)
-        # Agrupamos por altura (y) cada 5 píxeles, y luego de izquierda a derecha (x)
-        words.sort(key=lambda w: (round(w[1] / 5) * 5, w[0]))
-        texto_total += " ".join([w[4] for w in words]) + "\n"
+        texto_total += page.get_text("text") + "\n"
+        
+    # 2. Si es imagen plana, usamos OCR "Lite" (Bajo consumo RAM)
+    if len(texto_total.strip()) < 20:
+        reader = get_ocr_reader()
+        
+        # SOLO procesamos la primera página para no saturar memoria
+        page = doc[0] 
+        
+        # Convertimos a 96 DPI y Escala de grises (ahorra muchísima RAM)
+        pix = page.get_pixmap(dpi=96, colorspace=fitz.csGRAY)
+        img = Image.open(io.BytesIO(pix.tobytes("jpeg")))
+        
+        resultados = reader.readtext(np.array(img))
+        texto_total = " ".join([r[1] for r in resultados])
 
-    # 2. Estandarizamos a minúsculas para evitar problemas de mayúsculas/minúsculas
     t_limpio = texto_total.lower()
     
-    # 3. Buscamos los patrones clave
+    # 3. Búsqueda de patrones
     m_hora = re.search(r'(\d{2}:\d{2}:\d{2}[\.,]\d{3})', t_limpio)
     m_func = re.search(r'(i\s*max\s*tripping|imax\s*tripping|di/dt\s*tripping|tripping)', t_limpio)
-    # Buscamos todos los valores de corriente que terminen en " a" (ej. "6000 a")
     m_corrientes = re.findall(r'(\d{3,5})\s*a\b', t_limpio) 
     
-    hora_sitras = None
-    funcion_sitras = None
-    corriente_sitras = None
+    hora_sitras, funcion_sitras, corriente_sitras = None, None, None
 
-    if m_hora:
-        hora_sitras = m_hora.group(1).replace(".", ",")
-        
+    if m_hora: hora_sitras = m_hora.group(1).replace(".", ",")
     if m_func:
-        func_raw = m_func.group(1)
-        if "i max" in func_raw or "imax" in func_raw:
-            funcion_sitras = "Disparo Imax"
-        elif "di/dt" in func_raw:
-            funcion_sitras = "Disparo di/dt"
-        else:
-            funcion_sitras = "Disparo por protección"
-            
+        f_raw = m_func.group(1)
+        funcion_sitras = "Disparo Imax" if "max" in f_raw else ("Disparo di/dt" if "di/dt" in f_raw else "Disparo por protección")
     if m_corrientes:
-        # La corriente de disparo ("tripping") siempre es numéricamente mayor a los "warnings"
-        # Tomamos el valor máximo encontrado en toda la hoja
         corriente_sitras = str(max([int(c) for c in m_corrientes]))
 
     return hora_sitras, funcion_sitras, corriente_sitras
