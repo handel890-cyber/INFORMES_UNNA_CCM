@@ -627,10 +627,10 @@ with col_form:
         c_vicos1, c_vicos2 = st.columns(2)
         with c_vicos1:
             img_vicos_ap = st.file_uploader("Log Eventos (Aperturado) - Para OCR", type=["pdf", "jpg", "png", "jpeg"], key="up_ap")
-            foto_vicos_ap = st.file_uploader("📸 Imagen para el Anexo Word (Aperturado)", type=["jpg", "png", "jpeg"], key="foto_ap")
+            foto_vicos_ap = st.file_uploader("📸 Imagen para el Anexo Word (Aperturado)", type=["jpg", "png", "jpeg","bmp"], key="foto_ap")
         with c_vicos2:
             img_vicos_vec = st.file_uploader("Log Eventos (Vecino) - Para OCR", type=["pdf", "jpg", "png", "jpeg"], key="up_vec")
-            foto_vicos_vec = st.file_uploader("📸 Imagen para el Anexo Word (Vecino)", type=["jpg", "png", "jpeg"], key="foto_vec")
+            foto_vicos_vec = st.file_uploader("📸 Imagen para el Anexo Word (Vecino)", type=["jpg", "png", "jpeg","bmp"], key="foto_vec")
         
         if st.button("🚀 Extraer Datos de ambos SCADA", use_container_width=True):
             with st.spinner("Procesando documentos..."):
