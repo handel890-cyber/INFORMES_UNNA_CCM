@@ -892,7 +892,7 @@ with col_preview:
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
                 # 1. Guardar el Informe Word principal
-                nombre_word = f"Informe_Disparo_{datos_ap['ser']}_{context['fecha'].replace('/', '-')}.docx"
+                nombre_word = f"{context['fecha'].replace('/', '')} INFORME PRELIMINAR DEL EVENTO DE DISPARO CON RECIERRE DE INTERRUPTORES {datos_ap['interruptor']} Y {datos_vec['interruptor']}.docx"
                 zip_file.writestr(nombre_word, docx_bytes)
 
                 # 2. Guardar y renombrar Anexo 11 (Log Aperturado - OCR)
@@ -925,7 +925,7 @@ with col_preview:
             st.download_button(
                 label="📥 Descargar Paquete Completo (.zip)",
                 data=zip_buffer,
-                file_name=f"{context['fecha'].replace('/', '-')}_INFORME_PRELIMINAR_DEL_EVENTO_DE_DISPARO_CON_RECIERRE_DE_INTERRUPTORES_{datos_ap['interruptor']}_Y_{datos_vec['interruptor']}.zip",
+                file_name=f"{context['fecha'].replace('/', '')} INFORME PRELIMINAR DEL EVENTO DE DISPARO CON RECIERRE DE INTERRUPTORES {datos_ap['interruptor']} Y {datos_vec['interruptor']}.zip",
                 mime="application/zip",
                 use_container_width=True
             )
