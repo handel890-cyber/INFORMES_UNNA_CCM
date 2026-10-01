@@ -819,7 +819,7 @@ context = {
     "dia": dia_val, "tiempo_entre_trenes": headway, "condicion_senales": condicion, "operacion": operacion_val, "zona": zona_manual,
     "sup_pco": sup_pco_val, "per_sub": per_sub_val, "per_cat": per_cat_val,
     "valor_tiempo_sigra": st.session_state.get("val_osc", ""),
-    "tiene_sigra": hay_sigra
+    "tiene_sigra": hay_sigra,
     "motivo": motivo_val,
     "sobrecorrienteA": sobrecorriente_a,
     "sobrecorrienteB": sobrecorriente_b,
