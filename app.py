@@ -12,6 +12,7 @@ import fitz  # PyMuPDF
 from PIL import Image, ImageDraw, ImageFont
 from docx.shared import Mm, Pt
 import easyocr
+import zipfile
 
 st.set_page_config(layout="wide", page_title="Generador de Informes SCADA - CCM")
 
@@ -885,11 +886,47 @@ with col_preview:
             """
             components.html(viewer_html, height=760, scrolling=False)
 
+            # =========================================================
+            # CREACIÓN DEL ARCHIVO ZIP CON WORD Y ANEXOS RENOMBRADOS
+            # =========================================================
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                # 1. Guardar el Informe Word principal
+                nombre_word = f"Informe_Disparo_{datos_ap['ser']}_{context['fecha'].replace('/', '-')}.docx"
+                zip_file.writestr(nombre_word, docx_bytes)
+
+                # 2. Guardar y renombrar Anexo 11 (Log Aperturado - OCR)
+                if img_vicos_ap is not None:
+                    ext = img_vicos_ap.name.split('.')[-1]
+                    nom_11 = f"Anexo N° 11 – Registro de eventos PDF del {datos_ap['alimentador']} {datos_ap['ser']} VICOS RSC.{ext}"
+                    zip_file.writestr(nom_11, img_vicos_ap.getvalue())
+
+                # 3. Guardar y renombrar Anexo 10 (Imagen Aperturado - Word)
+                if foto_vicos_ap is not None:
+                    ext = foto_vicos_ap.name.split('.')[-1]
+                    nom_10 = f"Anexo N° 10 – Registro de eventos JPG del {datos_ap['alimentador']} {datos_ap['ser']} VICOS RSC.{ext}"
+                    zip_file.writestr(nom_10, foto_vicos_ap.getvalue())
+
+                # 4. Guardar y renombrar Anexo 13 (Log Vecino - OCR)
+                if img_vicos_vec is not None:
+                    ext = img_vicos_vec.name.split('.')[-1]
+                    nom_13 = f"Anexo N° 13 – Registro de eventos PDF del {datos_vec['alimentador']} {datos_vec['ser']} VICOS RSC.{ext}"
+                    zip_file.writestr(nom_13, img_vicos_vec.getvalue())
+
+                # 5. Guardar y renombrar Anexo 12 (Imagen Vecino - Word)
+                if foto_vicos_vec is not None:
+                    ext = foto_vicos_vec.name.split('.')[-1]
+                    nom_12 = f"Anexo N° 12 – Registro de eventos JPG del {datos_vec['alimentador']} {datos_vec['ser']} VICOS RSC.{ext}"
+                    zip_file.writestr(nom_12, foto_vicos_vec.getvalue())
+
+            zip_buffer.seek(0)
+
+            # Botón para descargar el ZIP
             st.download_button(
-                label="📥 Descargar Informe Completo (.docx)",
-                data=buffer,
-                file_name=f"Informe_Disparo_{datos_ap['ser']}_{context['fecha'].replace('/', '-')}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                label="📥 Descargar Paquete Completo (.zip)",
+                data=zip_buffer,
+                file_name=f"{context['fecha'].replace('/', '-')}_INFORME_PRELIMINAR_DEL_EVENTO_DE_DISPARO_CON_RECIERRE_DE_INTERRUPTORES_{datos_ap['interruptor']}_Y_{datos_vec['interruptor']}.zip",
+                mime="application/zip",
                 use_container_width=True
             )
         except Exception as e:
