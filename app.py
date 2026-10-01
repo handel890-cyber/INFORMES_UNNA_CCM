@@ -687,6 +687,7 @@ with col_form:
             key="input_func_rele"
         )
         
+
         f_disp_vec_ini = "Disparo por S/E vecina"
         f_disp_vec_fin = "Arrastre desde SSEE colateral activo"
         c_st1, c_st2, c_st3 = st.columns(3)
@@ -786,6 +787,27 @@ hora_vicos_ap_final = st.session_state.get("hora_vicos_disparo", f"{h_disp}")
 hora_vicos_vec_final = st.session_state.get("hora_vicos_disparo_vecina", f"{h_vec}")
 hay_sigra = True if st.session_state.get("anexo_oscilografico_bytes") else False
 
+if f_disp_fin == "Disparo Imax":
+    motivo_val = "acumulación"
+    sobrecorriente_a = "sobrecorriente"
+    sobrecorriente_b = "sobrecorriente"
+    sobrecorriente_c = "sobrecorriente"
+elif f_disp_fin == "Disparo Imax_rev":
+    motivo_val = "frenado simultaneo"
+    sobrecorriente_a = "sobrecorriente de reversa"
+    sobrecorriente_b = "sobrecorriente de retorno"
+    sobrecorriente_c = "sobrecorriente inversa"
+elif f_disp_fin == "Disparo di/dt":
+    motivo_val = "protección incremento y/o pendiente de corriente"
+    sobrecorriente_a = "cortocircuito"
+    sobrecorriente_b = "incremento y/o pendiente de corriente"
+    sobrecorriente_c = "cortocircuito"
+else:
+    motivo_val = ""
+    sobrecorriente_a = ""
+    sobrecorriente_b = ""
+    sobrecorriente_c = ""
+
 context = {
     "interruptor_aperturado": datos_ap["interruptor"], "alimentador_ser_aperturado": datos_ap["alimentador_ser"], "ser_aperturado": datos_ap["ser"], "alimentador_aperturado": datos_ap["alimentador"], "alimentador_aperturado_num": datos_ap["interruptor_num"],
     "interruptor_vecino": datos_vec["interruptor"], "alimentador_ser_vecino": datos_vec["alimentador_ser"], "ser_vecino": datos_vec["ser"], "alimentador_vecino": datos_vec["alimentador"], "alimentador_vecino_num": datos_vec["interruptor_num"],
@@ -798,6 +820,10 @@ context = {
     "sup_pco": sup_pco_val, "per_sub": per_sub_val, "per_cat": per_cat_val,
     "valor_tiempo_sigra": st.session_state.get("val_osc", ""),
     "tiene_sigra": hay_sigra
+    "motivo": motivo_val,
+    "sobrecorrienteA": sobrecorriente_a,
+    "sobrecorrienteB": sobrecorriente_b,
+    "sobrecorrienteC": sobrecorriente_c
 }
 
 # =========================================================
